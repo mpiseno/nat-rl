@@ -9,9 +9,11 @@ from habitat.utils.visualizations.utils import observations_to_image
 from habitat_baselines.utils.render_wrapper import overlay_frame
 from habitat_sim.utils import viz_utils as vut
 
+from nat_rl.envs import PickPlaceTableEnv
 
-EPS_TO_VIEW = 10
-CONFIG_PATH = "configs/pick-table.yaml"
+
+EPS_TO_VIEW = 1
+CONFIG_PATH = "configs/nat-rl/pickplace-SAC.yaml"
 
 
 def insert_render_options(config):
@@ -24,13 +26,12 @@ def insert_render_options(config):
 
 
 def main():
-    config=insert_render_options(
-            habitat.get_config(
+    config=habitat.get_config(
                 CONFIG_PATH
             )
-        )
+        
 
-    env = habitat.Env(config=config)
+    env = PickPlaceTableEnv(config=config)
     obs = env.reset()
 
     for i in range(EPS_TO_VIEW):
@@ -40,16 +41,15 @@ def main():
         count_steps = 0
 
         # To save the video
-        print(f'EP: {i} | num objs: {len(env._current_episode.rigid_objs)}')
         video_file_path = f"visuals/episode{i}.mp4"
         video_writer = vut.get_fast_video_writer(video_file_path, fps=30)
-        while not env.episode_over:
+        while not env.habitat_env.episode_over:
             action = env.action_space.sample()
-            obs = env.step(action)  # noqa: F841
-            info = env.get_metrics()
-            render_obs = obs['robot_third_rgb']
+            obs, r, done, info = env.step(action)  # noqa: F841
+            render_obs = obs['robot_third_depth']
+            
             #render_obs = observations_to_image(obs, info)
-            #import pdb; pdb.set_trace()
+        
             
             #render_obs = overlay_frame(render_obs, {'num objs': len(env._current_episode.rigid_objs)})
             video_writer.append_data(render_obs)

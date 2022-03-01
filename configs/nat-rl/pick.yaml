@@ -1,22 +1,18 @@
 ENVIRONMENT:
     MAX_EPISODE_STEPS: 200
-
-
 DATASET:
     TYPE: RearrangeDataset-v0
     SPLIT: train
     DATA_PATH: data/nat-rl/pickplace.json.gz
     SCENES_DIR: "data/replica_cad/"
-
-
 TASK:
     TYPE: RearrangePickTask-v0
     MAX_COLLISIONS: -1.0
     COUNT_OBJ_COLLISIONS: True
-    COUNT_ROBOT_OBJ_COLLS: False
-    DESIRED_RESTING_POSITION: [0.5, 0.0, 1.0]
+    COUNT_ROBOT_OBJ_COLLS: True
+    DESIRED_RESTING_POSITION: [0.0, 0.5, 1.0]
 
-    SHOULD_ENFORCE_TARGET_WITHIN_REACH: True
+    SHOULD_ENFORCE_TARGET_WITHIN_REACH: False
 
     # In radians
     BASE_ANGLE_NOISE: 0.15
@@ -25,14 +21,13 @@ TASK:
     FORCE_REGENERATE: False
 
     # Measurements for composite tasks.
-    REWARD_MEASUREMENT: "rearrangepickplace_reward"
-    SUCCESS_MEASUREMENT: "rearrangepickplace_success"
+    REWARD_MEASUREMENT: "rearrangepick_reward"
+    SUCCESS_MEASUREMENT: "rearrangepick_success"
 
     # If true, does not care about navigability or collisions with objects when spawning
     # robot
     EASY_INIT: False
 
-    # These are "Sensor" types. Stuff that will populate the observation
     TARGET_START_SENSOR:
         TYPE: "TargetStartSensor"
         GOAL_FORMAT: "CARTESIAN"
@@ -59,8 +54,6 @@ TASK:
     RELATIVE_RESTING_POS_SENSOR:
         TYPE: "RelativeRestingPositionSensor"
     SENSORS: ["TARGET_START_SENSOR", "JOINT_SENSOR", "IS_HOLDING_SENSOR", "END_EFFECTOR_SENSOR", "RELATIVE_RESTING_POS_SENSOR"]
-
-    # These are all "Measure" types. This is stuff that will populate the info dict
     ROBOT_FORCE:
         TYPE: "RobotForce"
         MIN_FORCE: 20.0
@@ -77,34 +70,41 @@ TASK:
         TYPE: "EndEffectorToRestDistance"
     DID_PICK_OBJECT:
         TYPE: "DidPickObjectMeasure"
-    PICKPLACE_REWARD:
-        TYPE: "RearrangePickPlaceReward"
+    NUM_STEPS:
+        TYPE: "NumStepsMeasure"
+    PICK_REWARD:
+        TYPE: "RearrangePickReward"
         DIST_REWARD: 20.0
         SUCC_REWARD: 10.0
         PICK_REWARD: 20.0
-        PLACE_REWARD: 20.0
         DROP_PEN: 5.0
         WRONG_PICK_PEN: 5.0
         USE_DIFF: True
-        DROP_OBJ_SHOULD_END: False
-        WRONG_PICK_SHOULD_END: False
-        CONSTRAINT_VIOLATE_PEN: 10.0 # General Rearrange Reward config
+        DROP_OBJ_SHOULD_END: True
+        WRONG_PICK_SHOULD_END: True
+
+        # General Rearrange Reward config
+        CONSTRAINT_VIOLATE_PEN: 10.0
         FORCE_PEN: 0.001
         MAX_FORCE_PEN: 1.0
         FORCE_END_PEN: 10.0
-    PICKPLACE_SUCCESS:
-        TYPE: "RearrangePickPlaceSuccess"
+
+
+    PICK_SUCCESS:
+        TYPE: "RearrangePickSuccess"
         SUCC_THRESH: 0.15
+
     MEASUREMENTS:
-        - "OBJECT_TO_GOAL_DISTANCE" # Measures target object distance to its goal position
+        - "OBJECT_TO_GOAL_DISTANCE"
         - "ROBOT_FORCE"
         - "EXCESSIVE_FORCE_SHOULD_END"
         - "ROBOT_COLLS"
-        - "END_EFFECTOR_TO_OBJECT_DISTANCE" # measures distance from EE to target object
+        - "END_EFFECTOR_TO_REST_DISTANCE"
+        - "END_EFFECTOR_TO_OBJECT_DISTANCE"
         - "DID_PICK_OBJECT"
-        - "PICKPLACE_SUCCESS"
-        - "PICKPLACE_REWARD"
-
+        - "PICK_SUCCESS"
+        - "PICK_REWARD"
+        - "NUM_STEPS"
     ACTIONS:
         ARM_ACTION:
             TYPE: "ArmAction"
@@ -118,7 +118,6 @@ TASK:
     POSSIBLE_ACTIONS:
         - ARM_ACTION
 
-
 SIMULATOR:
     ACTION_SPACE_CONFIG: v0
     AGENTS: ['AGENT_0']
@@ -128,22 +127,32 @@ SIMULATOR:
     AUTO_SLEEP: True
     ROBOT_JOINT_START_NOISE: 0.0
     FORCE_RECOMPUTE_NAVMESH: False
+    HEAD_DEPTH_SENSOR:
+        WIDTH: 256
+        HEIGHT: 256
+        MIN_DEPTH: 0.0
+        MAX_DEPTH: 10.0
+        NORMALIZE_DEPTH: True
+    THIRD_DEPTH_SENSOR:
+        WIDTH: 256
+        HEIGHT: 256
+        MIN_DEPTH: 0.0
+        MAX_DEPTH: 10.0
+        NORMALIZE_DEPTH: True
+        UUID: 'robot_third_depth'
+    THIRD_RGB_SENSOR:
+        HEIGHT: 256
+        WIDTH: 256
+    HEAD_RGB_SENSOR:
+        HEIGHT: 256
+        WIDTH: 256
     AGENT_0:
         HEIGHT: 1.5
         IS_SET_START_STATE: False
         RADIUS: 0.3
-        SENSORS: ['HEAD_DEPTH_SENSOR', 'HEAD_RGB_SENSOR']
+        SENSORS: ['THIRD_DEPTH_SENSOR'] #, 'THIRD_RGB_SENSOR']
         START_POSITION: [0, 0, 0]
         START_ROTATION: [0, 0, 0, 1]
-    HEAD_DEPTH_SENSOR:
-        WIDTH: 128
-        HEIGHT: 128
-        MIN_DEPTH: 0.0
-        MAX_DEPTH: 10.0
-        NORMALIZE_DEPTH: True
-    THIRD_RGB_SENSOR:
-        HEIGHT: 512
-        WIDTH: 512
 
     # Agent setup
     ARM_REST: [0.6, 0.0, 0.9]
