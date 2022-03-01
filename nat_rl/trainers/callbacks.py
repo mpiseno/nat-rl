@@ -38,7 +38,7 @@ class VideoRecorderCallback(BaseCallback):
                 screen = eval_env.render(mode="robot_third_rgb")
                 # PyTorch uses CxHxW vs HxWxC gym (and tensorflow) image convention
                 screens.append(screen.transpose(2, 0, 1))
-
+            import pdb; pdb.set_trace()
             eval_env = self.locals.get('env')
             evaluate_policy(
                 self.model,

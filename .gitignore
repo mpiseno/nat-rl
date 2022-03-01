@@ -1,5 +1,7 @@
 data
 visuals
-*.DS_STORE
+tb
 
+*.DS_STORE
 *.egg*
+*.pyc

@@ -4,7 +4,7 @@ import argparse
 import gym
 import habitat
 
-from nat_rl.envs import PickPlaceTableEnv, HabitatArmActionWrapper
+from nat_rl.envs import PickPlaceTableEnv
 from nat_rl.trainers import SACTrainer
 
 
@@ -22,10 +22,8 @@ def main():
 
     config_file = os.path.join(os.getcwd(), args.config)
     config = habitat.get_config(config_file)
-    env = PickPlaceTableEnv(config=config)
-    env = HabitatArmActionWrapper(env)
 
-    trainer = SACTrainer(env=env)
+    trainer = SACTrainer(env_class=PickPlaceTableEnv, env_kwargs={'config': config})
     if args.mode == 'train':
         trainer.learn(timesteps=args.num_timesteps)
     elif args.mode == 'eval':

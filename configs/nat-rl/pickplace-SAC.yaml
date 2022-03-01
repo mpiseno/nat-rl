@@ -8,6 +8,8 @@ DATASET:
     DATA_PATH: data/nat-rl/pickplace.json.gz
     SCENES_DIR: "data/replica_cad/"
 
+RL:
+    SUCCESS_REWARD: 100.0
 
 TASK:
     TYPE: RearrangePickPlaceTask-v0
@@ -15,7 +17,7 @@ TASK:
     COUNT_ROBOT_OBJ_COLLS: False
     DESIRED_RESTING_POSITION: [0.0, 0.5, 1.0] # Relative to the robot COM. This rest position gives good view of the final table state
 
-    SHOULD_ENFORCE_TARGET_WITHIN_REACH: True
+    SHOULD_ENFORCE_TARGET_WITHIN_REACH: False
 
     # In radians
     BASE_ANGLE_NOISE: 0.15
@@ -79,8 +81,8 @@ TASK:
     PICKPLACE_REWARD:
         TYPE: "RearrangePickPlaceReward"
         DIST_REWARD: 20.0
-        PICK_REWARD: 40.0
-        PLACE_REWARD: 60.0
+        PICK_REWARD: 20.0
+        PLACE_REWARD: 30.0
         DROP_PEN: 5.0
         WRONG_PICK_PEN: 5.0
         USE_DIFF: True
