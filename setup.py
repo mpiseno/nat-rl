@@ -8,4 +8,5 @@ setup(name='nat_rl',
       install_requires=[
             'numpy', 'gym', 'matplotlib', 'scipy',
             'stable-baselines3',
+            'pybullet==3.0.4'
       ])

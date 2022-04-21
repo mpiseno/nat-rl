@@ -9,11 +9,10 @@ from habitat.utils.visualizations.utils import observations_to_image
 from habitat_baselines.utils.render_wrapper import overlay_frame
 from habitat_sim.utils import viz_utils as vut
 
-from nat_rl.envs import PickPlaceTableEnv
+from nat_rl.utils.env_utils import make_habitat_pick_single_object_env
 
 
 EPS_TO_VIEW = 1
-CONFIG_PATH = "configs/nat-rl/pickplace-SAC.yaml"
 
 
 def insert_render_options(config):
@@ -26,16 +25,15 @@ def insert_render_options(config):
 
 
 def main():
-    config=habitat.get_config(
-                CONFIG_PATH
-            )
-        
-
-    env = PickPlaceTableEnv(config=config)
+    env = make_habitat_pick_single_object_env()
     obs = env.reset()
+
+    import pdb; pdb.set_trace()
 
     for i in range(EPS_TO_VIEW):
         env.reset()
+
+
 
         print(f"Agent acting inside environment | Episode {i}")
         count_steps = 0

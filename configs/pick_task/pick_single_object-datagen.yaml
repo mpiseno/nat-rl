@@ -1,0 +1,83 @@
+---
+dataset_path: "data/replica_cad/replicaCAD.scene_dataset_config.json"
+additional_object_paths:
+  - "data/objects/ycb/"
+scene_sets:
+  -
+    name: "scene_train_split"
+    included_substrings:
+      - "v3_sc0_staging_00_bench"
+    excluded_substrings: []
+    comment: "v3_sc4_staging saved for evaluation"
+
+object_sets:
+  -
+    name: "hab2"
+    included_substrings:
+      - "013_apple"
+      # - "005_tomato_soup_can"
+      # - "014_lemon"
+      # - "017_orange"
+      # - "037_scissors"
+      # - "008_pudding_box"
+      # - "011_banana"
+      # - "024_bowl"
+      # - "025_mug"
+      # - "030_fork"
+    excluded_substrings: []
+receptacle_sets:
+  -
+    name: "hab2"
+    included_object_substrings:
+      - ""
+    excluded_object_substrings: []
+    included_receptacle_substrings:
+      - "receptacle_aabb_Tbl1_Top1_frl_apartment_table_01"
+    excluded_receptacle_substrings: []
+
+ao_state_samplers:
+  -
+    name: "open_fridge_cab"
+    type: "composite"
+    params:
+      -
+        ao_handle: "fridge"
+        joint_states:
+          - ["top_door", 1.5, 1.5]
+      -
+        ao_handle: "counter"
+        joint_states:
+          - ["drawer1_top", 0.5, 0.5]
+          - ["drawer1_bottom", 0.5, 0.5]
+          - ["drawer2_top", 0.5, 0.5]
+          - ["drawer2_middle", 0.5, 0.5]
+          - ["drawer2_bottom", 0.5, 0.5]
+          - ["drawer3", 0.5, 0.5]
+          - ["drawer4", 0.5, 0.5]
+    comment: "For composite samplers, one param entry per AO and one joint state entry per joint: (name, min, max)."
+
+
+scene_sampler:
+  type: "subset"
+  params:
+    scene_sets: ["scene_train_split"]
+
+object_samplers:
+  -
+    name: "hab2"
+    type: "uniform"
+    params:
+      object_sets: ["hab2"]
+      receptacle_sets: ["hab2"]
+      num_samples: [1, 1]
+      orientation_sampling: "up"
+
+object_target_samplers:
+  -
+    name: "any_targets"
+    type: "uniform"
+    params:
+      object_samplers: ["hab2"]
+      receptacle_sets: ["hab2"]
+      num_samples: [1, 1]
+      orientation_sampling: "up"
