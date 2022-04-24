@@ -35,7 +35,7 @@ def generate_offline_trajectories(expert_traj_dir, env):
         obs = [
             {
                 'robot_third_rgb': img,
-                #'goal': goal_img.copy()
+                'goal': goal_img.copy()
             }
             for img in images
         ]

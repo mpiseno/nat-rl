@@ -68,9 +68,14 @@ python -m nat_rl.run_IL --env gc_pick_single_object-v0
 <a name="advanced"></a>
 ## Advanced
 
-To generate a dataset using habitat-lab's data generator:
+To generate a dataset using habitat-lab's data generator script (see datagen configs):
 ```bash
 HABITAT_SIM_LOG=quiet python -m habitat.datasets.rearrange.rearrange_generator --run --config configs/pick_task/pick_single_object-datagen.yaml --num-episodes 10 --out data/pick_datasets/pick_single_object.json.gz
+```
+
+To view a list of all the objects/receptables available for generation:
+```bash
+python -m habitat.datasets.rearrange.rearrange_generator --list
 ```
 
 To generate an image dataset of expert trajectories using pre-defined waypoints and IK

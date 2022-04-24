@@ -13,15 +13,17 @@ from habitat.utils.visualizations.utils import observations_to_image
 from stanford_habitat.utils import make_traj, execute_traj
 from stanford_habitat.measures import * # register
 from nat_rl.utils.ik import get_ee_waypoints
-from nat_rl.utils.env_utils import PICK_SINGLE_OBJECT_CONFIG
+from nat_rl.utils.env_utils import PICK_SINGLE_OBJECT_CONFIG, PICK_FRUIT_CONFIG, insert_test_dataset
 
 '''
 Uses IK to solve pick&place tasks and saves the trajectory buffer
 '''
 
-EXPERT_TRAJ_DIR = 'data/expert_trajs/'
+EXPERT_TRAJ_BASE_DIR = 'data/expert_trajs/'
 env_configs = {
-    'pick_single_object-v0': PICK_SINGLE_OBJECT_CONFIG
+    'pick_single_object-v0': PICK_SINGLE_OBJECT_CONFIG,
+    'pick_fruit': PICK_FRUIT_CONFIG,
+    'pick_fruit_test': PICK_FRUIT_CONFIG
 }
 
 
@@ -53,14 +55,18 @@ def make_IK_config(config):
 def make_IK_env(args):
     config_path = env_configs[args.env]
     config_path = os.path.join(os.getcwd(), config_path)
+
     env_config = habitat.get_config(config_path)
     env_config = make_IK_config(env_config)
+    if '_test' in args.env:
+        env_config = insert_test_dataset(env_config)
+
     env = habitat.Env(config=env_config)
     return env
 
 
-def save_traj(traj, action_traj, episode_id):
-    traj_dir = EXPERT_TRAJ_DIR + f'episodeid={episode_id}/'
+def save_traj(traj, action_traj, episode_id, expert_traj_dir):
+    traj_dir = os.path.join(expert_traj_dir, f'episodeid={episode_id}/')
     os.mkdir(traj_dir)
     for t, obs in enumerate(traj):
         obs_file = traj_dir + f'obs{t}.png'
@@ -76,7 +82,7 @@ def make_video(traj):
     pass
 
 
-def generate_single_trajectory(env, args, ep_iter=-1):
+def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
     video_writer = None
     ee_ctrl_lim = env._config.TASK.ACTIONS.ARM_ACTION.EE_CTRL_LIM
     obs = env.reset()
@@ -91,7 +97,7 @@ def generate_single_trajectory(env, args, ep_iter=-1):
     traj.append(obs)
 
     if args.make_video:
-        video_file_path = f'visuals/{args.env}_expert-ep{cur_episode_id}.mp4'
+        video_file_path = f'visuals/{args.env}/expert/{args.env}_expert_ep{cur_episode_id}.mp4'
         video_writer = hviz_utils.get_fast_video_writer(video_file_path, fps=30)
 
     # Trajectory from the start to the object
@@ -161,7 +167,8 @@ def generate_single_trajectory(env, args, ep_iter=-1):
         save_traj(
             traj,
             action_traj=action_traj,
-            episode_id=env.current_episode.episode_id
+            episode_id=env.current_episode.episode_id,
+            expert_traj_dir=expert_traj_dir
         )
     else:
         print(f'Failed episodeid={cur_episode_id}')
@@ -174,28 +181,34 @@ def generate_single_trajectory(env, args, ep_iter=-1):
 
 def generate_trajectories(args):
     assert args.env in env_configs, "Please choose a valid environment name"
-    assert not os.path.isdir(EXPERT_TRAJ_DIR), "Tried to overwrite existing trajectories. Please manually delete the trajectory dir"
 
-    os.mkdir(EXPERT_TRAJ_DIR)
+    expert_traj_dir = os.path.join(EXPERT_TRAJ_BASE_DIR, args.env)
+    assert not os.path.isdir(expert_traj_dir) or len(os.listdir(expert_traj_dir)) == 0, "Tried to overwrite existing trajectories. Please manually delete the trajectory dir"
+
+    if not os.path.isdir(expert_traj_dir):
+        os.mkdir(expert_traj_dir)
 
     env = make_IK_env(args)
     failed_episode_ids = []
-    for ep in range(len(env.episodes)):
-        success = generate_single_trajectory(env, args, ep_iter)
+    for ep_iter in range(len(env.episodes)):
+        success = generate_single_trajectory(env, args, ep_iter, expert_traj_dir)
         if not success:
             cur_episode_id = env.current_episode.episode_id
             failed_episode_ids.append(cur_episode_id)
     
-    print(f'Failed episode IDs: {failed_episode_ids}. Trying again')
+    if len(failed_episode_ids) > 0:
+        print(f'Failed episode IDs: {failed_episode_ids}. Trying them again')
+    else:
+        return
 
     # Sometimes due to randomness in the trajectory generation, episodes fail. So just retry them
-    failed_episode_ids = [str(i) for i in [39, 95, 315, 421, 450, 454]]
+    #failed_episode_ids = ['290', '483']
     failed_episodes = [ep for ep in env.episodes if ep.episode_id in failed_episode_ids]
     while len(failed_episodes):
         env._episode_iterator.episodes = failed_episodes
         env.episodes = failed_episodes
         env._current_episode = failed_episodes[0]
-        success = generate_single_trajectory(env, args)
+        success = generate_single_trajectory(env, args, expert_traj_dir=expert_traj_dir)
         if not success:
             failed_episodes.append(env.current_episode)
         else:
@@ -204,12 +217,19 @@ def generate_trajectories(args):
 
 
 def make_videos_from_offline_trajectories():
-    assert os.path.isdir(EXPERT_TRAJ_DIR), f'Could not find directory {EXPERT_TRAJ_DIR}'
+    expert_traj_dir = os.path.join(EXPERT_TRAJ_BASE_DIR, 'pick_fruit')
+    assert os.path.isdir(expert_traj_dir), f'Could not find directory {expert_traj_dir}'
 
-    num_eps = len(os.listdir(EXPERT_TRAJ_DIR))
+    num_eps = len(os.listdir(expert_traj_dir))
+    ep_ids = [int(ep.split('=')[-1]) for ep in os.listdir(expert_traj_dir)]
+    for i in range(500):
+        if i not in ep_ids:
+            print(i)
+
+    print(v)
     print(f'num eps: {num_eps}')
     ids = []
-    for traj_dir in os.listdir(EXPERT_TRAJ_DIR):
+    for traj_dir in os.listdir(expert_traj_dir):
         ep_id = int(traj_dir.split('=')[-1])
         ids.append(ep_id)
     
