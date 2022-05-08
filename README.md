@@ -97,11 +97,19 @@ python -m habitat.datasets.rearrange.rearrange_generator --list
 
 ### Imitation Learning
 
-The all CNN baselines (using CNN on both current and goal image):
+The End-to-End baselines (using CNN on both current and goal image):
 
 Pick Fruit:
 ```bash
 python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 55 7 88 62 59
+```
+
+
+The CLIP-Goal baselines (Using CLIP embeddings for the goal):
+
+Pick Fruit:
+```bash
+python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CLIP --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 55 7 88 62 59
 ```
 
 
