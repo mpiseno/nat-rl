@@ -2,6 +2,7 @@ data
 visuals
 logs
 tb
+tmp
 
 *.DS_STORE
 *.egg*

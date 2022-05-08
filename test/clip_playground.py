@@ -3,8 +3,11 @@ import clip
 from PIL import Image
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
+device = "cuda" if torch.cuda.is_available() else "cpu"
+model, preprocess = clip.load('ViT-B/32', device)
 
-#import pdb; pdb.set_trace()
+import pdb; pdb.set_trace()
+
 
 image = preprocess(Image.open("apple.png")).unsqueeze(0).to(device)
 text = clip.tokenize(["picking up an apple", "picking up a banana", "picking up a plum", "picking up an orange"]).to(device)

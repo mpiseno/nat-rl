@@ -68,12 +68,12 @@ def make_pick_fruit_env():
     return env
 
 
-def make_GC_pick_fruit_env(test_dataset=False):
+def make_GC_pick_fruit_env(test_dataset=False, env_kwargs={}):
     config_path = os.path.join(os.getcwd(), PICK_FRUIT_CONFIG)
     config = habitat.get_config(config_path)
     if test_dataset == True:
         config = insert_test_dataset(config)
 
-    env = GCRearrangeRLEnv(config=config)
+    env = GCRearrangeRLEnv(config=config, **env_kwargs)
     env = HabitatArmActionWrapper(env)
     return env

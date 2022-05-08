@@ -5,6 +5,7 @@ from threading import current_thread
 import gym
 import numpy as np
 import habitat
+import torch
 
 from PIL import Image
 from habitat_sim.utils import viz_utils as hviz_utils
@@ -12,7 +13,10 @@ from habitat.utils.visualizations.utils import observations_to_image
 
 from stanford_habitat.utils import make_traj, execute_traj
 from stanford_habitat.measures import * # register
+
+from nat_rl.models import load_clip_model
 from nat_rl.utils.ik import get_ee_waypoints
+from nat_rl.utils.common import expert_img_sort_fn
 from nat_rl.utils.env_utils import PICK_SINGLE_OBJECT_CONFIG, PICK_FRUIT_CONFIG, insert_test_dataset
 
 '''
@@ -29,9 +33,15 @@ env_configs = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='pick_single_object-v0')
+    parser.add_argument('--env', type=str, default='pick_fruit')
+
     parser.add_argument('--make_video', action='store_true', default=False)
     parser.add_argument('--make_videos_from_data', action='store_true', default=False)
+
+    parser.add_argument('--generate_image_trajs', action='store_true', default=False)
+    parser.add_argument('--generate_clip_embeddings', action='store_true', default=False)
+    parser.add_argument('--pretrained_clip_path', type=str, default=None)
+
     args = parser.parse_args()
     return args
 
@@ -80,6 +90,28 @@ def save_traj(traj, action_traj, episode_id, expert_traj_dir):
 
 def make_video(traj):
     pass
+
+
+# def make_videos_from_offline_trajectories():
+#     expert_traj_dir = os.path.join(EXPERT_TRAJ_BASE_DIR, 'pick_fruit')
+#     assert os.path.isdir(expert_traj_dir), f'Could not find directory {expert_traj_dir}'
+
+#     num_eps = len(os.listdir(expert_traj_dir))
+#     ep_ids = [int(ep.split('=')[-1]) for ep in os.listdir(expert_traj_dir)]
+#     for i in range(500):
+#         if i not in ep_ids:
+#             print(i)
+
+#     print(v)
+#     print(f'num eps: {num_eps}')
+#     ids = []
+#     for traj_dir in os.listdir(expert_traj_dir):
+#         ep_id = int(traj_dir.split('=')[-1])
+#         ids.append(ep_id)
+    
+#     total_ids = list(range(num_eps))
+#     not_here = [id_ for id_ in total_ids if id_ not in ids]
+#     print(f'absent = {not_here}')
 
 
 def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
@@ -202,50 +234,79 @@ def generate_trajectories(args):
         return
 
     # Sometimes due to randomness in the trajectory generation, episodes fail. So just retry them
-    #failed_episode_ids = ['290', '483']
     failed_episodes = [ep for ep in env.episodes if ep.episode_id in failed_episode_ids]
-    while len(failed_episodes):
+    failed_again_episodes = []
+    for ep in failed_episodes:
         env._episode_iterator.episodes = failed_episodes
         env.episodes = failed_episodes
-        env._current_episode = failed_episodes[0]
+        env._current_episode = ep
         success = generate_single_trajectory(env, args, expert_traj_dir=expert_traj_dir)
         if not success:
-            failed_episodes.append(env.current_episode)
-        else:
-            idx = [i for i, ep in enumerate(failed_episodes) if ep.episode_id == env.current_episode.episode_id][0]
-            del failed_episodes[idx]
-
-
-def make_videos_from_offline_trajectories():
-    expert_traj_dir = os.path.join(EXPERT_TRAJ_BASE_DIR, 'pick_fruit')
-    assert os.path.isdir(expert_traj_dir), f'Could not find directory {expert_traj_dir}'
-
-    num_eps = len(os.listdir(expert_traj_dir))
-    ep_ids = [int(ep.split('=')[-1]) for ep in os.listdir(expert_traj_dir)]
-    for i in range(500):
-        if i not in ep_ids:
-            print(i)
-
-    print(v)
-    print(f'num eps: {num_eps}')
-    ids = []
-    for traj_dir in os.listdir(expert_traj_dir):
-        ep_id = int(traj_dir.split('=')[-1])
-        ids.append(ep_id)
+            failed_again_episodes.append(env.current_episode)
     
-    total_ids = list(range(num_eps))
-    not_here = [id_ for id_ in total_ids if id_ not in ids]
-    print(f'absent = {not_here}')
+    failed_again_episode_ids = [ep.episode_id for ep in failed_again_episodes]
+    if len(failed_again_episode_ids) > 0:
+        print(f'''
+            Failed episodes after a second try (Please manually removed or replace these episodes from the <dataset>.json.gz file, because they do not have corresponding expert trajectories or goal images):\n
+            {failed_again_episode_ids}
+        ''')
+
+
+def generate_clip_embeddings_single_traj(episode_dir, model, preprocess, device):
+    episode_files = os.listdir(episode_dir)
+    obs_img_files = sorted(filter(lambda x: x.endswith('.png'), episode_files), key=expert_img_sort_fn)
+
+    images = [
+        np.array(
+            Image.open(os.path.join(episode_dir, img_file)),
+            dtype=np.uint8
+        )
+        for img_file in obs_img_files
+    ]
+    images = np.stack(images, axis=0) / 255 # the ToTensor transform usually normalizes to [0, 1] but is not compatable with batched images
+    images = torch.as_tensor(np.transpose(images, (0, 3, 1, 2)), dtype=torch.float32)
+    images = preprocess(images)
+    with torch.no_grad():
+        image_embeddings = model.encode_image(images.to(device))
+    
+    image_embeddings = image_embeddings.cpu().numpy()
+
+    embeddings_fname = os.path.join(episode_dir, 'clip_embeddings.npy')
+    np.save(embeddings_fname, image_embeddings.astype(np.float32))
+
+
+def generate_clip_embeddings(args):
+    if args.pretrained_clip_path is not None:
+        pass
+
+    expert_traj_dir = os.path.join(EXPERT_TRAJ_BASE_DIR, args.env)
+    episode_dirs = os.listdir(expert_traj_dir)
+
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    model, preprocess = load_clip_model(keep_original_transforms=False, device=device)
+
+    print(f'Generating CLIP embeddings from: {expert_traj_dir} | using device: {device}')
+    for i, episode_dir in enumerate(episode_dirs):
+        print(f'Generating CLIP embeddings {(i + 1)} / {len(episode_dirs)}')
+        generate_clip_embeddings_single_traj(
+            os.path.join(expert_traj_dir, episode_dir),
+            model,
+            preprocess,
+            device
+        )
 
 
 def main():
     os.environ['HABITAT_SIM_LOG'] = 'quiet'
     args = get_args()
-    if args.make_videos_from_data:
-        make_videos_from_offline_trajectories()
-    else:
+    
+    # Generates the actual trajectories and saves image observations
+    if args.generate_image_trajs:
         generate_trajectories(args)
     
+    # Saves CLIP embeddings of the generated images. Assumes the images are already saved
+    if args.generate_clip_embeddings:
+        generate_clip_embeddings(args)
 
 
 if __name__ == '__main__':

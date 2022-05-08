@@ -10,14 +10,16 @@ def get_args():
     parser.add_argument('--device', type=str, default='cuda' if th.cuda.is_available() else 'cpu')
 
     parser.add_argument('--lr', type=float, default=1e-3)
-    parser.add_argument('--l2_weight', type=float, default=1e-4)
+    parser.add_argument('--l2_weight', type=float, default=5e-4)
     parser.add_argument('--batch_size', type=int, default=256)
 
     parser.add_argument('--n_IL_epochs', type=int, default=10)
     parser.add_argument('--logdir', type=str, default='logs')
     parser.add_argument('--load_policy_path', type=str, default=None)
+    parser.add_argument('--seeds', type=int, nargs='+', default=[0])
 
     parser.add_argument('--eval', type=str, default=None, choices=['train', 'test'])
+    parser.add_argument('--make_video', action='store_true', default=False)
 
     args = parser.parse_args()
     return args

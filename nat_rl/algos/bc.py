@@ -73,10 +73,7 @@ class BehaviorCloningTrainerDictObs(BehaviorCloningTrainer):
     policy: policies.ActorCriticPolicy
 
     def __call__(self, batch):
-        obs = {}
-        for key, val in batch['obs'].items():
-            obs[key] = th.as_tensor(val, device=self.policy.device).detach()
-        
+        obs = self.preprocess_obs(batch['obs'])
         acts = th.as_tensor(batch["acts"], device=self.policy.device).detach()
         training_metrics = self.loss(self.policy, obs, acts)
 
@@ -85,6 +82,26 @@ class BehaviorCloningTrainerDictObs(BehaviorCloningTrainer):
         self.optimizer.step()
 
         return training_metrics
+    
+    def preprocess_img(self, obs):
+        assert isinstance(obs, np.ndarray)
+
+        obs = obs / 255
+        obs = np.transpose(obs, (0, 3, 1, 2))
+        obs = th.as_tensor(obs, dtype=th.float32, device=self.policy.device).detach()
+        return obs
+
+    def preprocess_obs(self, obs):
+        processed_obs = {}
+        for key, val in obs.items():
+            if len(val.shape) == 4:
+                processed_obs[key] = self.preprocess_img(val)
+            else:
+                processed_obs[key] = th.as_tensor(
+                    obs[key], dtype=th.float32, device=self.policy.device
+                ).detach()
+
+        return processed_obs
 
 
 class BC_(bc.BC):

@@ -1,17 +1,18 @@
 # Naturalizing RL
-## Scratch code for "home to Habitat" project
 
 **Table of Contents:**<br />
 [Installation](#install)<br />
 [Quick Start](#quick-start)<br />
 [Advanced](#advanced)<br />
+[Paper Results](#results)<br />
 [TODOs](#todos)<br />
 
 
 <a name="install"></a>
 ## Installation
 
-In order to import and use the resources in this repository, you first need to install [habitat-sim](https://github.com/facebookresearch/habitat-sim) and [habitat-lab](https://github.com/facebookresearch/habitat-lab)
+In order to import and use the resources in this repository, you first need to install [habitat-sim](https://github.com/facebookresearch/habitat-sim) and [habitat-lab](https://github.com/mpiseno/habitat-lab.git).
+Follow the habitat-lab instructions to also download the ReplicaCAD dataset and assets and place them in the data/ folder in your working directory.
 
 1. Install Habitat
 ```bash
@@ -33,7 +34,8 @@ conda install habitat-sim withbullet headless -c conda-forge -c aihabitat-nightl
 ```
 
 2. Install Stanford Habitat
-Stanford Habitat is a collection of custom environments, measures, and sensors for habitat-lab. The readme for Stanford Habitat will also tell you to install habitat with a specific commit. Ignore that, and stick with the fork of habitat-lab we have here from step 1.
+Stanford Habitat is a collection of custom environments, measures, and sensors for habitat-lab. Note: The readme for Stanford Habitat will also tell you to install habitat-lab with a specific commit.
+Ignore that and stick with Michael's forked habitat-lab version used in step 1.
 ```bash
 cd ~/code/
 git clone https://github.com/stanford-iprl-lab/stanford-habitat.git
@@ -47,7 +49,7 @@ git clone https://github.com/mpiseno/nat-rl.git
 cd nat-rl && pip install -e .
 ```
 
-4. **Optional** Install Imitation
+4. Install Imitation
 For imitation learning, we use the [imitation](https://github.com/HumanCompatibleAI/imitation) package. We use a specific commit for reproducibility.
 ```bash
 cd ~/code/
@@ -60,10 +62,17 @@ pip install -e .
 <a name="quick-start"></a>
 ## Quick Start
 
+### Imitiation Learning
+
+First you need to obtain an expert dataset of image trajectories to train the policy. For expert trajectories used in our experiments, download them from [here]() and extract the expert_trajs folder inside
+the data/ directory. You can also generate your own expert trajectories and clip embessings using scripts/generate_expert_trajectories.py.
+
 To train an imitation learning agent:
 ```bash
-python -m nat_rl.run_IL --env gc_pick_single_object-v0
+python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --logdir logs/
 ```
+
+The ```--feature_extractor``` argument can take either "CNN" or "CLIP". Note that CLIP embeddings are pre-computed for our IL training setup, and will be read in from data/expert_trajs/.
 
 <a name="advanced"></a>
 ## Advanced
@@ -73,14 +82,27 @@ To generate a dataset using habitat-lab's data generator script (see datagen con
 HABITAT_SIM_LOG=quiet python -m habitat.datasets.rearrange.rearrange_generator --run --config configs/pick_task/pick_single_object-datagen.yaml --num-episodes 10 --out data/pick_datasets/pick_single_object.json.gz
 ```
 
+To generate an image dataset of expert trajectories using pre-defined waypoints and IK
+```bash
+python scripts/generate_expert_trajs.py --env pick_fruit --generate_image_trajs
+```
+
 To view a list of all the objects/receptables available for generation:
 ```bash
 python -m habitat.datasets.rearrange.rearrange_generator --list
 ```
 
-To generate an image dataset of expert trajectories using pre-defined waypoints and IK
+<a name="results"></a>
+## Reproducing Results
+
+### Imitation Learning
+
+The all CNN baselines (using CNN on both current and goal image):
+
+Pick Fruit:
 ```bash
-python scripts/generate_expert_trajs.py --env pick_single_object-v0
+python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 55 7 88 62 59
 ```
+
 
 ## TODOs

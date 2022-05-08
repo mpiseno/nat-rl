@@ -1,9 +1,14 @@
 import os
+import time
 
 import numpy as np
 import torch
 
 from habitat_sim.utils import viz_utils as vut
+from stable_baselines3.common.policies import ActorCriticPolicy
+
+
+SUCCESS_RATES_FNAME = 'success_rates.txt'
 
 
 def run_single_episode(
@@ -54,22 +59,105 @@ def evaluate_success_rate(env, policy, num_eps=10, video_dir=None, train_mode=No
     return success_rate
 
 
+def multiprocess_eval_target(env_fn, env_fn_kwargs, saved_policy_path):
+    env = env_fn(**env_fn_kwargs)
+    policy = torch.load(saved_policy_path, map_location='cuda')
+    assert isinstance(policy, ActorCriticPolicy)
+
+    num_eps = len(env.habitat_env.episodes)
+    start = time.time()
+    success_rate = evaluate_success_rate(
+        env, policy,
+        num_eps=num_eps, train_mode=False
+    )
+
+    print(f'Evaluated {saved_policy_path} in {round(time.time() - start, 2)} seconds | success rate: {success_rate}')
+    
+    if 'final' in saved_policy_path:
+        epoch = 100
+    else:
+        epoch = int(saved_policy_path.split('=')[-1][:-len('.pt')])
+    
+    env.close()
+    return (epoch, success_rate)
+    
+
+def evaluate_grid(env_fn, env_fn_kwargs, saved_policies_dir):
+    from multiprocessing import Pool
+
+    policy_fnames = filter(
+        lambda x: x.endswith('.pt'),
+        os.listdir(saved_policies_dir)
+    )
+    multiprocess_args = []
+    for policy_fname in policy_fnames:
+        multiprocess_args.append(
+            (
+                env_fn,
+                env_fn_kwargs,
+                os.path.join(saved_policies_dir, policy_fname)
+            )
+        )
+    
+    num_cpus = int(os.environ.get('SLURM_CPUS_PER_TASK', 1))
+    print(f'Using {num_cpus} CPUs')
+    with Pool(num_cpus) as p:
+        result = p.starmap(multiprocess_eval_target, multiprocess_args)
+
+    return result
+
+    
+    # for policy_file in policy_fnames:
+    #     if 'final' in policy_file:
+    #         cur_epoch = 100
+    #     else:
+    #         cur_epoch = int(policy_file.split('=')[-1][:-len('.pt')])
+
+    #     # if cur_epoch < 20:
+    #     #     continue
+
+    #     policy = torch.load(
+    #         os.path.join(saved_policies_dir, policy_file), map_location='cuda'
+    #     )
+    #     assert isinstance(policy, ActorCriticPolicy)
+
+    #     num_eps = len(env.habitat_env.episodes)
+    #     start = time.time()
+    #     success_rate = evaluate_success_rate(
+    #         env, policy,
+    #         num_eps=num_eps, train_mode=False
+    #     )
+    #     print(f'Evaluated {os.path.join(saved_policies_dir, policy_file)} in {round(time.time() - start, 2)} seconds')
+    #     log_fname = os.path.join(saved_policies_dir, SUCCESS_RATES_FNAME)
+    #     if os.path.isfile(log_fname):
+    #         print(f'removing old log file')
+    #         os.remove(log_fname)
+    #     with open(log_fname, 'a') as f:
+    #         f.write(f'{cur_epoch},{round(success_rate, 3)}\n')        
+
 
 class EvalCallback:
-    def __init__(self, eval_env, policy, num_eps=10):
+    def __init__(self, eval_env=None, policy=None, num_eps=10, call_freq=10, save_dir='logs'):
         self.eval_env = eval_env
         self.policy = policy
         self.num_eps = num_eps
+        self.save_dir = save_dir
+        self.call_freq = call_freq
         self.n_calls = 0
     
     def __call__(self):
-        success_rate = evaluate_success_rate(
-            self.eval_env,
-            self.policy,
-            num_eps=self.num_eps,
-            train_mode=True
-        )
+        if self.n_calls % self.call_freq == 0:
+            if self.eval_env is not None:
+                success_rate = evaluate_success_rate(
+                    self.eval_env,
+                    self.policy,
+                    num_eps=self.num_eps,
+                    train_mode=True
+                )
+                print(f'SuccessRateMetric | epoch: {self.n_calls} | success rate: {success_rate}')
+
+            policy_path = os.path.join(self.save_dir, f'epoch={self.n_calls}.pt')
+            torch.save(self.policy, policy_path)
 
         self.n_calls += 1
-        print(f'SuccessRateMetric | epoch: {self.n_calls} | success rate: {success_rate}')
 
