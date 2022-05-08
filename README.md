@@ -64,8 +64,8 @@ pip install -e .
 
 ### Imitiation Learning
 
-First you need to obtain an expert dataset of image trajectories to train the policy. For expert trajectories used in our experiments, download them from [here]() and extract the expert_trajs folder inside
-the data/ directory. You can also generate your own expert trajectories and clip embessings using scripts/generate_expert_trajectories.py.
+First you need to obtain an expert dataset of image trajectories to train the policy. For expert trajectories used in our experiments, download them from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing)
+and extract the expert_trajs folder inside the data/ directory. You can also generate your own expert trajectories and clip embessings using scripts/generate_expert_trajectories.py.
 
 To train an imitation learning agent:
 ```bash
@@ -79,7 +79,7 @@ The ```--feature_extractor``` argument can take either "CNN" or "CLIP". Note tha
 
 To generate a dataset using habitat-lab's data generator script (see datagen configs):
 ```bash
-HABITAT_SIM_LOG=quiet python -m habitat.datasets.rearrange.rearrange_generator --run --config configs/pick_task/pick_single_object-datagen.yaml --num-episodes 10 --out data/pick_datasets/pick_single_object.json.gz
+HABITAT_SIM_LOG=quiet python -m habitat.datasets.rearrange.rearrange_generator --run --config configs/pick_task/pick_fruit/pick_fruit_datagen.yaml --num-episodes 10 --out data/pick_datasets/pick_fruit_2.json.gz
 ```
 
 To generate an image dataset of expert trajectories using pre-defined waypoints and IK
