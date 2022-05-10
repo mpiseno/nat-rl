@@ -48,7 +48,7 @@ cd ~/code/
 git clone https://github.com/mpiseno/nat-rl.git
 cd nat-rl && pip install -e .
 ```
-
+<!-- 
 4. Install Imitation
 For imitation learning, we use the [imitation](https://github.com/HumanCompatibleAI/imitation) package. We use a specific commit for reproducibility.
 ```bash
@@ -57,7 +57,7 @@ git clone http://github.com/HumanCompatibleAI/imitation
 cd imitation
 git checkout -b my_specific_commit ed45793dfdd897d3ac1f3a863a8816b56d436887
 pip install -e .
-```
+``` -->
 
 <a name="quick-start"></a>
 ## Quick Start

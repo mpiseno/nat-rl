@@ -3,6 +3,7 @@ visuals
 logs
 tb
 tmp
+src
 
 *.DS_STORE
 *.egg*

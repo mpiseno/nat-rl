@@ -8,13 +8,17 @@ import habitat
 
 from stanford_habitat.envs import RearrangeRLEnv, GCRearrangeRLEnv, HabitatArmActionWrapper
 from stanford_habitat.measures import * # register
-from stanford_habitat.tasks import SimplePickTask, SimplePickPlaceTask # register
+from stanford_habitat.tasks import (
+    SimplePickTask, SimplePickPlaceTask,
+    SpacialReasoningTask
+) 
 from stanford_habitat.datasets.rearrange_datasets import RearrangeDatasetV1
 
 
 PICK_SINGLE_OBJECT_CONFIG = "configs/pick_task/pick_single_object.yaml"
 GC_PICK_SINGLE_OBJECT_CONFIG = "configs/pick_task/pick_single_object_GC.yaml"
 PICK_FRUIT_CONFIG = "configs/pick_task/pick_fruit/pick_fruit.yaml"
+SPACIAL_REASONING_CONFIG = "configs/pickplace_tasks/spatial_reasoning_datagen/spatial_reasoning.yaml"
 
 DEFAULT_ENV_OPTIONS = {'test_dataset': False}
 
@@ -75,5 +79,16 @@ def make_GC_pick_fruit_env(test_dataset=False, env_kwargs={}):
         config = insert_test_dataset(config)
 
     env = GCRearrangeRLEnv(config=config, **env_kwargs)
+    env = HabitatArmActionWrapper(env)
+    return env
+
+
+def make_GC_spacial_reasoning_env(test_dataset=False, env_kwargs={}):
+    config_path = os.path.join(os.getcwd(), SPACIAL_REASONING_CONFIG)
+    config = habitat.get_config(config_path)
+    if test_dataset == True:
+        config = insert_test_dataset(config)
+
+    env = habitat.Env(config=config)
     env = HabitatArmActionWrapper(env)
     return env
