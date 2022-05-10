@@ -41,8 +41,8 @@ def main():
 
         count_steps += 1
 
-        print(f"Episode finished after {count_steps} steps.")
-        video_writer.close()
+    print(f"Episode finished after {count_steps} steps.")
+    video_writer.close()
 
 
 if __name__ == '__main__':
