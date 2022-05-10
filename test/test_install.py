@@ -11,6 +11,10 @@ from habitat.utils.visualizations.utils import observations_to_image
 from habitat_baselines.utils.render_wrapper import overlay_frame
 from habitat_sim.utils import viz_utils as vut
 
+from stanford_habitat.envs import *
+from stanford_habitat.measures import *
+from stanford_habitat.tasks import *
+
 
 CONFIG = 'configs/test/test_install.yaml'
 
