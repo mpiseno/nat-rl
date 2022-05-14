@@ -48,7 +48,7 @@ cd ~/code/
 git clone https://github.com/mpiseno/nat-rl.git
 cd nat-rl && pip install -e .
 ```
-
+<!-- 
 4. Install Imitation
 For imitation learning, we use the [imitation](https://github.com/HumanCompatibleAI/imitation) package. We use a specific commit for reproducibility.
 ```bash
@@ -57,7 +57,7 @@ git clone http://github.com/HumanCompatibleAI/imitation
 cd imitation
 git checkout -b my_specific_commit ed45793dfdd897d3ac1f3a863a8816b56d436887
 pip install -e .
-```
+``` -->
 
 <a name="quick-start"></a>
 ## Quick Start
@@ -103,6 +103,8 @@ Pick Fruit:
 ```bash
 python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 55 7 88 62 59
 ```
+
+Spatial Reasoning:
 
 
 The CLIP-Goal baselines (Using CLIP embeddings for the goal):
