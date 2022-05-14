@@ -1,11 +1,15 @@
 import os
+import json
+import gzip
 import argparse
+import random
 from threading import current_thread
 
 import gym
 import numpy as np
 import habitat
 import torch
+import clip
 
 from PIL import Image
 from habitat_sim.utils import viz_utils as hviz_utils
@@ -29,6 +33,10 @@ env_configs = {
     'pick_fruit': PICK_FRUIT_CONFIG,
     'pick_fruit_test': PICK_FRUIT_CONFIG
 }
+dataset_files = {
+    'pick_fruit': 'data/pick_datasets/pick_fruit/pick_fruit.json copy.gz',
+    'pick_fruit_test': 'data/pick_datasets/pick_fruit/pick_fruit_test.json.gz'
+}
 
 
 def get_args():
@@ -40,6 +48,7 @@ def get_args():
 
     parser.add_argument('--generate_image_trajs', action='store_true', default=False)
     parser.add_argument('--generate_clip_embeddings', action='store_true', default=False)
+    parser.add_argument('--generate_clip_lang_embeddings', action='store_true', default=False)
     parser.add_argument('--pretrained_clip_path', type=str, default=None)
 
     args = parser.parse_args()
@@ -275,7 +284,7 @@ def generate_clip_embeddings_single_traj(episode_dir, model, preprocess, device)
     np.save(embeddings_fname, image_embeddings.astype(np.float32))
 
 
-def generate_clip_embeddings(args):
+def generate_clip_embeddings(args, lang=False):
     if args.pretrained_clip_path is not None:
         pass
 
@@ -285,14 +294,73 @@ def generate_clip_embeddings(args):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = load_clip_model(keep_original_transforms=False, device=device)
 
-    print(f'Generating CLIP embeddings from: {expert_traj_dir} | using device: {device}')
+    print(f'Generating CLIP Image embeddings from: {expert_traj_dir} | using device: {device}')
     for i, episode_dir in enumerate(episode_dirs):
         print(f'Generating CLIP embeddings {(i + 1)} / {len(episode_dirs)}')
         generate_clip_embeddings_single_traj(
             os.path.join(expert_traj_dir, episode_dir),
             model,
             preprocess,
-            device
+            device,
+        )
+
+
+def get_episode_id_to_target_object(dataset_file):
+    print(f'Parsing {dataset_file} for object info')
+
+    ep_id_to_obj = {}
+    with gzip.open(dataset_file, 'rb') as f:
+        episodes = json.loads(f.read())['episodes']
+        for ep in episodes:
+            ep_id = int(ep['episode_id'])
+            obj_handle = list(ep['info']['object_labels'].keys())[0]
+            obj = obj_handle.split('_')[1]
+            ep_id_to_obj[ep_id] = obj
+    
+    return ep_id_to_obj
+
+
+def generate_clip_language_embeddings_single_traj(episode_dir, model, device, true_object):
+    def generate_language(obj):
+        noun1 = random.choice(['image', 'picture', 'photo'])
+        verb1 = random.choice(['holding', 'picking up', 'grabbing'])
+        a_vs_an1 = 'A' if noun1 in ['picture', 'photo'] else 'An'
+        a_vs_an2 = 'a' if obj in ['plum', 'banana'] else 'an'
+        utterance = f'{a_vs_an1} {noun1} of a robot {verb1} {a_vs_an2} {obj} above the table.'
+        return utterance
+
+    utterance = generate_language(true_object)
+    token = clip.tokenize([utterance])
+    text_embedding = model.encode_text(token).detach().numpy()
+
+    embedding_fname = os.path.join(episode_dir, 'clip_language_embeddings.npy')
+    np.save(embedding_fname, text_embedding.astype(np.float32))
+    with open(os.path.join(episode_dir, 'raw_language.txt'), 'w') as f:
+        f.write(utterance)
+
+
+def generate_clip_lang_embeddings(args):
+    if args.pretrained_clip_path is not None:
+        pass
+
+    expert_traj_dir = os.path.join(EXPERT_TRAJ_BASE_DIR, args.env)
+    episode_dirs = os.listdir(expert_traj_dir)
+
+    device = "cpu"
+    model, _ = load_clip_model(keep_original_transforms=False, device=device)
+
+    dataset_file = dataset_files[args.env]
+    ep_id_to_obj = get_episode_id_to_target_object(dataset_file)
+
+    print(f'Generating CLIP Language embeddings from: {expert_traj_dir} | using device: {device}')
+    for i, episode_dir in enumerate(episode_dirs):
+        print(f'Generating CLIP Language embeddings {(i + 1)} / {len(episode_dirs)}')
+        ep_id = int(episode_dir.split('=')[-1])
+        generate_clip_language_embeddings_single_traj(
+            os.path.join(expert_traj_dir, episode_dir),
+            model,
+            device,
+            ep_id_to_obj[ep_id]
         )
 
 
@@ -307,6 +375,9 @@ def main():
     # Saves CLIP embeddings of the generated images. Assumes the images are already saved
     if args.generate_clip_embeddings:
         generate_clip_embeddings(args)
+
+    if args.generate_clip_lang_embeddings:
+        generate_clip_lang_embeddings(args)
 
 
 if __name__ == '__main__':

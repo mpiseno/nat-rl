@@ -1,0 +1,85 @@
+---
+dataset_path: "data/replica_cad/replicaCAD.scene_dataset_config.json"
+additional_object_paths:
+  - "data/objects/ycb/"
+scene_sets:
+  -
+    name: "scene_train_split"
+    included_substrings:
+      - "v3_sc0_staging_00_bench"
+    excluded_substrings: []
+    comment: "v3_sc4_staging saved for evaluation"
+
+object_sets:
+  -
+    name: "objects"
+    included_substrings:
+      - "030_fork"
+      - "037_scissors"
+      - "002_master_chef_can"
+      - "044_flat_screwdriver"
+      - "077_rubiks_cube"
+
+    excluded_substrings: []
+receptacle_sets:
+  -
+    name: "kitchen_sink"
+    included_object_substrings:
+      - ""
+    excluded_object_substrings: []
+    included_receptacle_substrings:
+      - "sink_kitchen_counter"
+      
+    excluded_receptacle_substrings: []
+  -
+    name: "kitchen_drawer"
+    included_object_substrings:
+      - ""
+    excluded_object_substrings: []
+    included_receptacle_substrings:
+      - "drawer_left_bottom_frl_apartment_kitchen_counter"
+      #- "right_kitchen_counter"
+    excluded_receptacle_substrings: []
+
+ao_state_samplers:
+  -
+    name: "open_drawer"
+    type: "composite"
+    params:
+      -
+        ao_handle: "counter"
+        joint_states:
+          - ["drawer1_top", 0.35, 0.35]
+          #- ["drawer1_bottom", 0.5, 0.5]
+          #- ["drawer2_top", 0.5, 0.5]
+          #- ["drawer2_middle", 0.5, 0.5]
+          #- ["drawer2_bottom", 0.5, 0.5]
+          #- ["drawer3", 0.5, 0.5]
+          #- ["drawer4", 0.5, 0.5]
+    comment: "For composite samplers, one param entry per AO and one joint state entry per joint: (name, min, max)."
+
+
+scene_sampler:
+  type: "subset"
+  params:
+    scene_sets: ["scene_train_split"]
+
+object_samplers:
+  -
+    name: "hab2"
+    type: "uniform"
+    params:
+      object_sets: ["objects"]
+      receptacle_sets: ["kitchen_sink"]
+      num_samples: [1, 1] # upper bound is not inclusive! so this generates [2, 3] inclusive
+      orientation_sampling: "up"
+
+object_target_samplers:
+  -
+    name: "any_targets"
+    type: "uniform"
+    params:
+      object_samplers: ["hab2"]
+      receptacle_sets: ["kitchen_drawer"]
+      num_samples: [1, 1]
+      orientation_sampling: "up"

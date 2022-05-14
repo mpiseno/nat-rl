@@ -2,6 +2,7 @@ import os
 import time
 import argparse
 import collections
+import multiprocessing
 
 from pathlib import Path
 
@@ -21,24 +22,24 @@ def get_args():
     args = parser.parse_args()
     return args
 
-def main(args):
+def main(args, mp_ctx):
     assert args.env in env_fns
 
     env_fn_kwargs = {
         'test_dataset': True,
         'env_kwargs': {
-            'goal_format': 'image', # NOTE: change this if needed
+            'goal_format': 'clip_lang', # NOTE: change this if needed
             'load_goals': True
         }
     }
 
-    runs = [
-        'logs/bc/saved_models/gc_pick_fruit_CNN_seed=7_ts-1651650105',
-        'logs/bc/saved_models/gc_pick_fruit_CNN_seed=55_ts-1651642267',
-        'logs/bc/saved_models/gc_pick_fruit_CNN_seed=59_ts-1651673775',
-        'logs/bc/saved_models/gc_pick_fruit_CNN_seed=62_ts-1651665986',
-        'logs/bc/saved_models/gc_pick_fruit_CNN_seed=88_ts-1651658028'
-    ]
+    # runs = [
+    #     'logs/bc/saved_models/gc_pick_fruit_CNN_seed=7_ts-1651650105',
+    #     'logs/bc/saved_models/gc_pick_fruit_CNN_seed=55_ts-1651642267',
+    #     'logs/bc/saved_models/gc_pick_fruit_CNN_seed=59_ts-1651673775',
+    #     'logs/bc/saved_models/gc_pick_fruit_CNN_seed=62_ts-1651665986',
+    #     'logs/bc/saved_models/gc_pick_fruit_CNN_seed=88_ts-1651658028'
+    # ]
 
     # runs = [
     #     'logs/bc/saved_models/gc_pick_fruit_CLIP_seed=7_ts-1651651303',
@@ -48,18 +49,20 @@ def main(args):
     #     'logs/bc/saved_models/gc_pick_fruit_CLIP_seed=88_ts-1651656104'
     # ]
 
-    # runs = [
-    #     'logs/bc/saved_models/test2'
-    # ]
+    runs = [
+        'logs/bc/saved_models/gc_pick_fruit_CLIP_best_policies'
+    ]
 
+    is_train = 'train' if (env_fn_kwargs['test_dataset'] == False) else 'test'
     best_data = {}
     all_data = collections.defaultdict(list)
     for policy_dir in runs:
-        seed = int(policy_dir.split('=')[-1].split('_')[0])
+        seed = -1 if is_train else int(policy_dir.split('=')[-1].split('_')[0])
         result = evaluate_grid(
             make_GC_pick_fruit_env,
             env_fn_kwargs,
-            policy_dir
+            policy_dir,
+            mp_ctx
         )
         best_epoch, best_acc = max(result, key=lambda x: x[1])
         best_data[seed] = (best_epoch, best_acc)
@@ -73,12 +76,14 @@ def main(args):
         extactor_type = 'CNN'
     elif env_fn_kwargs['env_kwargs']['goal_format'] == 'clip':
         extactor_type = 'CLIP'
+    elif env_fn_kwargs['env_kwargs']['goal_format'] == 'clip_lang':
+        extactor_type = 'CLIP_Lang'
 
     print(f'Mean best success rate: {avg_across_seeds} | Standard dev: {std_across_seeds}')
 
     save_dir = 'logs/bc/results/'
     Path(save_dir).mkdir(parents=True, exist_ok=True)
-    stats_file = os.path.join(save_dir, f'eval_statistics_{extactor_type}_{time.time()}.txt')
+    stats_file = os.path.join(save_dir, f'eval_statistics_{extactor_type}_{is_train}_{time.time()}.txt')
     with open(stats_file, 'w') as f:
         f.write(f'Mean best success rate: {avg_across_seeds}\n')
         f.write(f'Std dev best success rate: {std_across_seeds}\n')
@@ -89,6 +94,7 @@ def main(args):
 
 
 if __name__ == '__main__':
+    mp_ctx = multiprocessing.get_context("forkserver")
     os.environ['HABITAT_SIM_LOG'] = 'quiet'
     args = get_args()
-    main(args)
+    main(args, mp_ctx)

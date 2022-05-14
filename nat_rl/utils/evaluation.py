@@ -82,9 +82,7 @@ def multiprocess_eval_target(env_fn, env_fn_kwargs, saved_policy_path):
     return (epoch, success_rate)
     
 
-def evaluate_grid(env_fn, env_fn_kwargs, saved_policies_dir):
-    from multiprocessing import Pool
-
+def evaluate_grid(env_fn, env_fn_kwargs, saved_policies_dir, mp_ctx):
     policy_fnames = filter(
         lambda x: x.endswith('.pt'),
         os.listdir(saved_policies_dir)
@@ -101,10 +99,10 @@ def evaluate_grid(env_fn, env_fn_kwargs, saved_policies_dir):
     
     num_cpus = int(os.environ.get('SLURM_CPUS_PER_TASK', 1))
     print(f'Using {num_cpus} CPUs')
-    with Pool(num_cpus) as p:
-        result = p.starmap(multiprocess_eval_target, multiprocess_args)
-
-    return result
+    with mp_ctx.Pool(num_cpus) as pool:
+       results = pool.starmap(multiprocess_eval_target, multiprocess_args)
+        
+    return results
 
     
     # for policy_file in policy_fnames:

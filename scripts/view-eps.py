@@ -9,14 +9,14 @@ from habitat.utils.visualizations.utils import observations_to_image
 from habitat_baselines.utils.render_wrapper import overlay_frame
 from habitat_sim.utils import viz_utils as vut
 
-from nat_rl.utils.env_utils import make_habitat_pick_single_object_env, make_pick_fruit_env
+from nat_rl.utils.env_utils import make_habitat_pick_single_object_env, make_pick_fruit_env, make_GC_place_in_drawer_env
 
 
-EPS_TO_VIEW = 10
+EPS_TO_VIEW = 8
 
 
 def main():
-    env = make_pick_fruit_env()
+    env = make_GC_place_in_drawer_env()
 
     # import collections
     # counter = collections.defaultdict(int)
@@ -34,6 +34,7 @@ def main():
         # To save the video
         video_file_path = f"visuals/tmp/episode{i}.mp4"
         video_writer = vut.get_fast_video_writer(video_file_path, fps=30)
+        #import pdb; pdb.set_trace()
         render_obs = obs['robot_third_rgb']
         video_writer.append_data(render_obs)
         while not env.habitat_env.episode_over:
@@ -56,4 +57,5 @@ def main():
 
 
 if __name__ == '__main__':
+    os.environ['HABITAT_SIM_LOG'] = 'quiet'
     main()
