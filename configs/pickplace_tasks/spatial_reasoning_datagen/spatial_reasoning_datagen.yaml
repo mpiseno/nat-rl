@@ -14,10 +14,8 @@ object_sets:
   -
     name: "objects"
     included_substrings:
-      - "013_apple"
-      - "011_banana"
-      - "018_plum"
-      - "017_orange"
+      - "077_rubiks_cube"
+      
     excluded_substrings: []
 
 receptacle_sets:

@@ -210,14 +210,14 @@ def get_input_vel_ctlr(
         #rot = env._sim.robot.sim_obj.rotation
         #ee_pos = env._sim.robot.ee_transform.translation
         # print(f"Robot state: pos = {pos}, rotation = {rot}, ee_pos = {ee_pos}")
-        rel_target_pos = prev_obs['relative_target_position_sensor']
-        rel_obj_to_goal = prev_obs['relative_object_to_goal_position_sensor']
-        #rel_rest = prev_obs['relative_resting_position']
+        # rel_target_pos = prev_obs['relative_target_position_sensor']
+        # rel_obj_to_goal = prev_obs['relative_object_to_goal_position_sensor']
+        # #rel_rest = prev_obs['relative_resting_position']
         ee_pos = prev_obs['ee_pos']
-        print(f'ee pos: {ee_pos}, rel targ pos: {rel_target_pos}, rel goal pos: {rel_obj_to_goal}')
+        print(f'ee pos: {ee_pos}')
 
-        at_goal = prev_obs['target_at_goal']
-        print(f'at goal? {at_goal}')
+        # at_goal = prev_obs['target_at_goal']
+        # print(f'at goal? {at_goal}')
     elif keys[pygame.K_COMMA]:
         # Print the current arm state of the robot, useful for debugging.
         joint_state = [float("%.3f" % x) for x in env._sim.robot.arm_joint_pos]
@@ -466,6 +466,7 @@ def has_pygame():
 
 
 if __name__ == "__main__":
+    os.environ["HABITAT_SIM_LOG"] = 'quiet'
     parser = argparse.ArgumentParser()
     parser.add_argument("--no-render", action="store_true", default=False)
     parser.add_argument("--save-obs", action="store_true", default=False)

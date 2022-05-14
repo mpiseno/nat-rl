@@ -14,10 +14,10 @@ from habitat.utils.visualizations.utils import observations_to_image
 from stanford_habitat.utils import make_traj, execute_traj
 from stanford_habitat.measures import * # register
 
-from nat_rl.models import load_clip_model
+#from nat_rl.models import load_clip_model
 from nat_rl.utils.ik import get_ee_waypoints
-from nat_rl.utils.common import expert_img_sort_fn
-from nat_rl.utils.env_utils import PICK_SINGLE_OBJECT_CONFIG, PICK_FRUIT_CONFIG, insert_test_dataset
+#from nat_rl.utils.common import expert_img_sort_fn
+from nat_rl.utils.env_utils import PICK_SINGLE_OBJECT_CONFIG, PICK_FRUIT_CONFIG, SPACIAL_REASONING_CONFIG, insert_test_dataset
 
 '''
 Uses IK to solve pick&place tasks and saves the trajectory buffer
@@ -27,7 +27,8 @@ EXPERT_TRAJ_BASE_DIR = 'data/expert_trajs/'
 env_configs = {
     'pick_single_object-v0': PICK_SINGLE_OBJECT_CONFIG,
     'pick_fruit': PICK_FRUIT_CONFIG,
-    'pick_fruit_test': PICK_FRUIT_CONFIG
+    'pick_fruit_test': PICK_FRUIT_CONFIG,
+    'spatial_reasoning': SPACIAL_REASONING_CONFIG
 }
 
 
@@ -46,7 +47,11 @@ def get_args():
     return args
 
 
-def make_IK_config(config):
+def is_pick_and_place_env(env_name):
+    return env_name in ['spatial_reasoning']
+
+
+def make_IK_config(config, args):
     config.defrost()
 
     config.TASK.ACTIONS.ARM_ACTION.ARM_CONTROLLER = "ArmEEAction"
@@ -57,6 +62,9 @@ def make_IK_config(config):
         "END_EFFECTOR_SENSOR",
         "RELATIVE_RESTING_POS_SENSOR"
     ]
+
+    if is_pick_and_place_env(args.env):
+        config.TASK.SENSORS.append("RELATIVE_OBJECT_TO_GOAL_POS_SENSOR")
     
     config.freeze()
     return config
@@ -67,7 +75,7 @@ def make_IK_env(args):
     config_path = os.path.join(os.getcwd(), config_path)
 
     env_config = habitat.get_config(config_path)
-    env_config = make_IK_config(env_config)
+    env_config = make_IK_config(env_config, args)
     if '_test' in args.env:
         env_config = insert_test_dataset(env_config)
 
@@ -129,7 +137,7 @@ def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
     traj.append(obs)
 
     if args.make_video:
-        video_file_path = f'visuals/{args.env}/expert/{args.env}_expert_ep{cur_episode_id}.mp4'
+        video_file_path = f'visuals/expert/{args.env}_expert_ep{cur_episode_id}.mp4'
         video_writer = hviz_utils.get_fast_video_writer(video_file_path, fps=30)
 
     # Trajectory from the start to the object
@@ -138,7 +146,7 @@ def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
         end_position_is_relative=True,
         offsets=np.array([
             [0., 0., 0.],
-            [0., 0., 0.],
+            [0., 0., 0.3],
             [0., 0., 0.05]
         ])
     )
@@ -156,25 +164,31 @@ def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
     
     action_traj = np.concatenate((ee_traj, np.expand_dims(grip_traj, axis=1)), axis=1)
 
-    # # Trajectory from object to the goal location
-    # ee_waypoints = get_ee_waypoints(
-    #     final_obs, end_position_key='relative_object_to_goal_position_sensor',
-    #     end_position_is_relative=True,
-    #     offsets=np.array([
-    #         [0., 0., 0.],
-    #         [0., 0., 0.3], # Make the midpoint a bit above the table
-    #         [0., 0., 0.05]
-    #     ])
-    # )
-    # ee_traj = make_traj(ee_waypoints, num_steps=150, interp_mode='quadratic')
-    # grip_traj = [1.] * len(ee_traj)
-    # grip_traj[-1] = -1. # Last action should release
-    # final_obs = execute_traj(
-    #     env,
-    #     ee_traj=ee_traj,
-    #     grip_traj=grip_traj,
-    #     video_writer=video_writer
-    # )
+
+    if is_pick_and_place_env(args.env):
+        # Trajectory from object to the goal location
+        ee_waypoints = get_ee_waypoints(
+            final_obs, end_position_key='relative_object_to_goal_position_sensor',
+            end_position_is_relative=True,
+            offsets=np.array([
+                [0., 0., 0.],
+                [0., 0., 0.3], # Make the midpoint a bit above the table
+                [0., 0., 0.05]
+            ])
+        )
+        ee_traj = np.array(make_traj(ee_waypoints, num_steps=100, interp_mode='quadratic')) / ee_ctrl_lim
+        grip_traj = [1.] * len(ee_traj)
+        grip_traj[-3:] = [-1., -1., -1.] # Last few actions should release
+        sub_traj, _ = execute_traj(
+            env,
+            ee_traj=ee_traj,
+            grip_traj=grip_traj,
+            video_writer=video_writer
+        )
+        final_obs = sub_traj[-1]
+        traj.extend(sub_traj)
+        
+        action_traj = np.concatenate((ee_traj, np.expand_dims(grip_traj, axis=1)), axis=1)
 
     # And finally, from the goal location to the EE resting position
     ee_waypoints = get_ee_waypoints(
@@ -182,7 +196,7 @@ def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
         end_position_is_relative=True
     )
     ee_traj = np.array(make_traj(ee_waypoints, num_steps=100, interp_mode='quadratic')) / ee_ctrl_lim
-    grip_traj = [1.] * len(ee_traj)
+    grip_traj = [-1.] * len(ee_traj)
     sub_traj, last_info = execute_traj(
         env,
         ee_traj=ee_traj,
@@ -190,7 +204,10 @@ def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
         video_writer=video_writer
     )
 
-    success = last_info and last_info['rearrangepick_success']
+    success = last_info and (
+        last_info.get('rearrangepickplace_success', False)
+        or last_info.get('rearrangepick_success', False)
+    )
     if success == True:
         traj.extend(sub_traj)
         actions = np.concatenate((ee_traj, np.expand_dims(grip_traj, axis=1)), axis=1)

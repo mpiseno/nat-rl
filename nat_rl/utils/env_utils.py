@@ -6,7 +6,7 @@ import os
 
 import habitat
 
-from stanford_habitat.envs import RearrangeRLEnv, GCRearrangeRLEnv, HabitatArmActionWrapper
+from stanford_habitat.envs import CustomRearrangeRLEnv, GCRearrangeRLEnv, HabitatArmActionWrapper
 from stanford_habitat.measures import * # register
 from stanford_habitat.tasks import (
     SimplePickTask, SimplePickPlaceTask,

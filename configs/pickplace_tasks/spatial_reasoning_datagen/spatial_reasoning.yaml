@@ -6,14 +6,15 @@ DATASET:
     SPLIT: train
     DATA_PATH: data/pickplace_datasets/spatial_reasoning/spatial_reasoning.json.gz
     SCENES_DIR: "data/replica_cad/"
-    #EXPERT_TRAJ_DIR: "data/expert_trajs/pick_fruit/"
+    EXPERT_TRAJ_DIR: "data/expert_trajs/spatial_reasoning/"
 
 TASK:
     TYPE: SpacialReasoningTask
     MAX_COLLISIONS: -1.0
     COUNT_OBJ_COLLISIONS: True
     COUNT_ROBOT_OBJ_COLLS: False
-    DESIRED_RESTING_POSITION: [0.9, 0.1, 1.1]
+    #DESIRED_RESTING_POSITION: [0.9, 0.1, 1.1]
+    DESIRED_RESTING_POSITION: [0.6, 0.0, 1.1]
 
     BASE_ANGLE_NOISE: 0.15 # In radians
     BASE_NOISE: 0.05
@@ -22,8 +23,8 @@ TASK:
     SHOULD_ENFORCE_TARGET_WITHIN_REACH: False
 
     # Measurements for composite tasks.
-    REWARD_MEASUREMENT: "rearrangepick_reward"
-    SUCCESS_MEASUREMENT: "rearrangepick_success"
+    REWARD_MEASUREMENT: "rearrangepickplace_reward"
+    SUCCESS_MEASUREMENT: "rearrangepickplace_success"
     # If true, does not care about navigability or collisions with objects when spawning
     # robot
     EASY_INIT: False
@@ -50,6 +51,8 @@ TASK:
         TYPE: "IsHoldingSensor"
     RELATIVE_RESTING_POS_SENSOR:
         TYPE: "RelativeRestingPositionSensor"
+    RELATIVE_OBJECT_TO_GOAL_POS_SENSOR:
+        TYPE: "RelativeObjectToGoalPositionSensor"
     SENSORS: []
 
     ROBOT_FORCE:
@@ -73,22 +76,24 @@ TASK:
     PLACED_OBJECT:
         TYPE: "PlacedObjectMeasure"
         SUCC_THRESH: 0.15
-    PICK_REWARD:
-        TYPE: "RearrangePickReward"
+    PICKPLACE_REWARD:
+        TYPE: "RearrangePickPlaceReward"
         DIST_REWARD: 20.0
-        PICK_REWARD: 20.0
+        PICK_REWARD: 30.0
+        PLACE_REWARD: 30.0
         DROP_PEN: 5.0
-        WRONG_PICK_PEN: 5.0
+        WRONG_PICK_PEN: 10.0
         USE_DIFF: True
         DROP_OBJ_SHOULD_END: False
         WRONG_PICK_SHOULD_END: True
+        LIVING_PENALTY: 0.01
         # General Rearrange Reward config
         CONSTRAINT_VIOLATE_PEN: 10.0
         FORCE_PEN: 0.001
         MAX_FORCE_PEN: 1.0
         FORCE_END_PEN: 10.0
-    PICK_SUCCESS:
-        TYPE: "RearrangePickSuccess"
+    PICKPLACE_SUCCESS:
+        TYPE: "RearrangePickPlaceSuccess"
         SUCC_THRESH: 0.1
     MEASUREMENTS:
         - "OBJECT_TO_GOAL_DISTANCE"
@@ -99,9 +104,9 @@ TASK:
         - "END_EFFECTOR_TO_OBJECT_DISTANCE"
         - "DID_PICK_OBJECT"
         - "DID_PICK_CORRECT_OBJECT"
-        - "PICK_SUCCESS"
-        - "PICK_REWARD"
         - "PLACED_OBJECT"
+        - "PICKPLACE_SUCCESS"
+        - "PICKPLACE_REWARD"
     ACTIONS:
         ARM_ACTION:
             TYPE: "ArmAction"
@@ -153,8 +158,8 @@ SIMULATOR:
         HEIGHT: 512
 
     THIRD_RGB_SENSOR:
-        WIDTH: 512
-        HEIGHT: 512
+        WIDTH: 128
+        HEIGHT: 128
 
     # Agent setup
     ARM_REST: [0.6, 0.0, 0.9]

@@ -104,6 +104,8 @@ Pick Fruit:
 python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 55 7 88 62 59
 ```
 
+Spatial Reasoning:
+
 
 The CLIP-Goal baselines (Using CLIP embeddings for the goal):
 
