@@ -34,6 +34,7 @@ conda install habitat-sim withbullet headless -c conda-forge -c aihabitat-nightl
 ```
 
 2. Install Stanford Habitat
+
 Stanford Habitat is a collection of custom environments, measures, and sensors for habitat-lab. Note: The readme for Stanford Habitat will also tell you to install habitat-lab with a specific commit.
 Ignore that and stick with Michael's forked habitat-lab version used in step 1.
 ```bash
@@ -55,6 +56,8 @@ files should have the following structure.
 nat-rl/
     nat_rl/
     data/
+        pick_datasets/
+        pickplace_datasets/
         replica_cad/
         robots/
         default.physics_config.json
@@ -81,14 +84,12 @@ pip install -e .
 ### Obtaining a Demonstration Dataset
 
 In order to train policies, we first need to generate a dataset of expert trajectories that will live in ```data/expert_trajs/```. 
-<!-- You can either download our expert trajectories from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing). You also to download the episode dataset file used by habitat (the .json.gz file) for each environment. Download that from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing) and put it in the data folder as well. -->
-
+You can download our expert trajectories from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing). Make ```expert_trajs``` subdirectory of ```data```.
 
 
 ### Imitiation Learning
 
-First you need to obtain an expert dataset of image trajectories to train the policy. For expert trajectories used in our experiments, download them from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing)
-and extract the expert_trajs folder inside the data/ directory. You can also generate your own expert trajectories and clip embessings using scripts/generate_expert_trajectories.py.
+After obtaining a demonstration dataset, we can run an IL agent on it.
 
 To train an imitation learning agent:
 ```bash
@@ -96,6 +97,7 @@ python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --logdir log
 ```
 
 The ```--feature_extractor``` argument can take either "CNN" or "CLIP". Note that CLIP embeddings are pre-computed for our IL training setup, and will be read in from data/expert_trajs/.
+
 
 <a name="advanced"></a>
 ## Advanced
@@ -155,7 +157,7 @@ inside the ```exp_logdir/saved_models/``` directory.
 python scripts/evaluate_policies.py --env gc_spatial_reasoning --exp_logdir logs/bc/spatial_reasoning/CLIP_Img/ --split test --goal_type clip_img
 ```
 
-```goal_tpye``` can be 'image', 'clip_img', or 'clip_lang', We expect the experiment logdir (i.e. ```exp_logdir```) to have the format.
+```goal_type``` can be 'image', 'clip_img', or 'clip_lang', We expect the experiment logdir (i.e. ```exp_logdir```) to have the format.
 The results from the evaluation will be placed in ```exp_logdir/results/```.
 
 ```
