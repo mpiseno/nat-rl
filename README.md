@@ -48,6 +48,22 @@ cd ~/code/
 git clone https://github.com/mpiseno/nat-rl.git
 cd nat-rl && pip install -e .
 ```
+
+**Note:** You must download the appropriate habitat data assets and extract them in the ```data``` directory. Your
+files should have the following structure.
+```
+nat-rl/
+    nat_rl/
+    data/
+        replica_cad/
+        robots/
+        default.physics_config.json
+
+```
+
+You can test your installation by running ```python tests/test_install.py```.
+
+
 <!-- 
 4. Install Imitation
 For imitation learning, we use the [imitation](https://github.com/HumanCompatibleAI/imitation) package. We use a specific commit for reproducibility.
@@ -61,6 +77,13 @@ pip install -e .
 
 <a name="quick-start"></a>
 ## Quick Start
+
+### Obtaining a Demonstration Dataset
+
+In order to train policies, we first need to generate a dataset of expert trajectories that will live in ```data/expert_trajs/```. 
+<!-- You can either download our expert trajectories from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing). You also to download the episode dataset file used by habitat (the .json.gz file) for each environment. Download that from [here](https://drive.google.com/file/d/139RcMbknmq4nbNSPmgWVoIHa4rvlX0d3/view?usp=sharing) and put it in the data folder as well. -->
+
+
 
 ### Imitiation Learning
 

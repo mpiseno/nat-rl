@@ -1,4 +1,7 @@
-data
+data/*
+!data/pick_datasets
+!data/pickplace_datasets
+
 visuals
 logs
 tb
