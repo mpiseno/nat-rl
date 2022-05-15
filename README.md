@@ -106,12 +106,50 @@ python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CNN --n_IL_epoch
 
 Spatial Reasoning:
 
+```bash
+python -m nat_rl.run_IL --env gc_spatial_reasoning --feature_extractor CNN --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 66 14 71 82 44
+```
+
 
 The CLIP-Goal baselines (Using CLIP embeddings for the goal):
 
 Pick Fruit:
 ```bash
 python -m nat_rl.run_IL --env gc_pick_fruit --feature_extractor CLIP --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 55 7 88 62 59
+```
+
+Spatial Reasoning:
+```bash
+python -m nat_rl.run_IL --env gc_spatial_reasoning --feature_extractor CLIP --n_IL_epochs 100 --lr 0.0005 --batch_size 256 --l2_weight 0.0005 --seeds 66 14 71 82 44
+```
+
+
+### Evaluating Results
+
+We provide an evaluation script that averages accuracies across seeds. The following command will report the average performance across best policies from each seed
+inside the ```exp_logdir/saved_models/``` directory.
+```bash
+python scripts/evaluate_policies.py --env gc_spatial_reasoning --exp_logdir logs/bc/spatial_reasoning/CLIP_Img/ --split test --goal_type clip_img
+```
+
+```goal_tpye``` can be 'image', 'clip_img', or 'clip_lang', We expect the experiment logdir (i.e. ```exp_logdir```) to have the format.
+The results from the evaluation will be placed in ```exp_logdir/results/```.
+
+```
+exp_logdir/
+    results/
+    saved_models/
+        seed=0/
+        seed=1/
+        seed=2/
+
+        ...
+
+        seed=10/
+            saved_model_epoch=0.pt
+            saved_model_epoch=5.pt
+
+            ...
 ```
 
 

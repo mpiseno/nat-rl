@@ -14,6 +14,7 @@ SUCCESS_RATES_FNAME = 'success_rates.txt'
 def run_single_episode(
     env,
     policy,
+    goal_type,
     video_dir=None,
     train_mode=None
 ):
@@ -22,7 +23,7 @@ def run_single_episode(
     episode_id = env.habitat_env.current_episode.episode_id
     traj = [obs]
     while True:
-        action, _ = policy.predict(obs, deterministic=True, train_mode=train_mode)
+        action, _ = policy.predict(obs, goal_type=goal_type, deterministic=True, train_mode=train_mode)
         obs, rew, done, info = env.step(action)
         traj.append(obs)
 
@@ -44,11 +45,12 @@ def run_single_episode(
     return success
 
 
-def evaluate_success_rate(env, policy, num_eps=10, video_dir=None, train_mode=None):
+def evaluate_success_rate(env, policy, goal_type, num_eps=10, video_dir=None, train_mode=None):
     num_success = 0
     for _ in range(num_eps):
         success = run_single_episode(
-            env, policy, 
+            env, policy,
+            goal_type=goal_type,
             video_dir=video_dir, train_mode=train_mode
         )
 
@@ -67,7 +69,7 @@ def multiprocess_eval_target(env_fn, env_fn_kwargs, saved_policy_path):
     num_eps = len(env.habitat_env.episodes)
     start = time.time()
     success_rate = evaluate_success_rate(
-        env, policy,
+        env, policy, goal_type=env_fn_kwargs['goal_type'],
         num_eps=num_eps, train_mode=False
     )
 

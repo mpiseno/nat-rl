@@ -28,7 +28,8 @@ from imitation.data import rollout
 
 env_fns = {
     'gc_pick_single_object-v0': make_habitat_GC_pick_single_object_env,
-    'gc_pick_fruit': make_GC_pick_fruit_env
+    'gc_pick_fruit': make_GC_pick_fruit_env,
+    'gc_spatial_reasoning': make_GC_spacial_reasoning_env
 }
 
 feature_extractors = {
@@ -113,8 +114,8 @@ def run_experiments(args):
         clip = args.feature_extractor == 'CLIP'
         env_fn_kwargs = {
             'test_dataset': False,
+            'goal_type': 'clip_img' if clip else 'image',
             'env_kwargs': {
-                'goal_format': 'clip' if clip else 'image',
                 'load_goals': False
             }
         }

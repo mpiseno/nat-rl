@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from PIL import Image
 
 from scipy import spatial
+from sklearn.neighbors import NearestNeighbors
 from sklearn.manifold import TSNE
 
 
@@ -43,11 +44,11 @@ def generate_language(true_object):
         'banana': 'yellow'
     }
     noun1 = random.choice(['image', 'picture', 'photo'])
-    verb1 = random.choice(['holding'])
+    verb1 = random.choice(['holding', 'picking up'])
     a_vs_an1 = 'A' if noun1 in ['picture', 'photo'] else 'An'
     adjective = obj_to_adjective[true_object]
     a_vs_an2 = 'a' if adjective in ['red', 'purple', 'yellow'] else 'an'
-    utterance = f'A computer rendering of a robot {verb1} a {adjective} {true_object} over the table.'
+    utterance = f'{a_vs_an1} {noun1} of a robot {verb1} {a_vs_an2} {adjective} {true_object} above the table.'
     return utterance
 
 
@@ -79,17 +80,17 @@ def generate_embeddings():
         token = clip.tokenize([utterance])
         text_embedding = model.encode_text(token).detach().numpy()
 
-        data[episode_id] = (goal_embedding.copy(), text_embedding[0])
+        data[episode_id] = (goal_embedding.copy(), text_embedding[0], (clip_embeddings[1]).copy())
 
     return data, ep_id_to_obj
 
 
-def compute_avg_dist(img, lang, label1, label2):
+def compute_avg_dist(img, init, label1, label2):
     print(f'Computing {label1} <-> {label2}')
     cos_dists = []
     l2_dists = []
     for im in img:
-        for u in lang:
+        for u in init:
             cos_distance = spatial.distance.cosine(im, u)
             l2_distance = np.linalg.norm(im - u)
             cos_dists.append(cos_distance)
@@ -103,14 +104,17 @@ def compute_avg_dist(img, lang, label1, label2):
 
 def compute_dists(data, ep_id_to_obj):
     img_embeddings = []
+    init_img_embeddings = []
     lang_embeddings = []
     labels = []
-    for ep_id, (img_emb, lang_emb) in data.items():
+    for ep_id, (img_emb, lang_emb, init_emb) in data.items():
         img_embeddings.append(img_emb)
+        init_img_embeddings.append(init_emb)
         lang_embeddings.append(lang_emb)
         labels.append(ep_id_to_obj[ep_id])
     
     img_embeddings = np.stack(img_embeddings, axis=0)
+    init_img_embeddings = np.stack(img_embeddings, axis=0)
     lang_embeddings = np.stack(lang_embeddings, axis=0)
     labels = np.array(labels)
 
@@ -123,11 +127,38 @@ def compute_dists(data, ep_id_to_obj):
     plum_img = img_embeddings[labels == 'plum']
     plum_lang = lang_embeddings[labels == 'plum']
 
+    apple_init = init_img_embeddings[labels == 'apple']
+    orange_init = init_img_embeddings[labels == 'orange']
+    banana_init = init_img_embeddings[labels == 'banana']
+    plum_init = init_img_embeddings[labels == 'plum']
+
+    apple_init = apple_init + apple_lang
+    orange_init = orange_init + orange_lang
+    banana_init = banana_init + banana_lang
+    plum_init = plum_init + plum_lang
+
+    knn = NearestNeighbors(n_neighbors=1).fit(img_embeddings)
+
+    apple_idxs = knn.kneighbors(apple_init, n_neighbors=1, return_distance=False).squeeze()
+    apple_init = init_img_embeddings[apple_idxs]
+    orange_idxs = knn.kneighbors(orange_init, n_neighbors=1, return_distance=False).squeeze()
+    orange_init = init_img_embeddings[orange_idxs]
+    banana_idxs = knn.kneighbors(banana_init, n_neighbors=1, return_distance=False).squeeze()
+    banana_init = init_img_embeddings[banana_idxs]
+    plum_idxs = knn.kneighbors(plum_init, n_neighbors=1, return_distance=False).squeeze()
+    plum_init = init_img_embeddings[plum_idxs]
+
     imgs = [
         apple_img,
         orange_img,
         banana_img,
         plum_img
+    ]
+    inits = [
+        apple_init,
+        orange_init,
+        banana_init,
+        plum_init
     ]
     langs = [
         apple_lang,
@@ -140,8 +171,8 @@ def compute_dists(data, ep_id_to_obj):
     df_cos = pd.DataFrame(np.zeros((4, 4)), index=classes, columns=classes)
     df_l2 = pd.DataFrame(np.zeros((4, 4)), index=classes, columns=classes)
     for i, (img, label1) in enumerate(zip(imgs, classes)):
-        for j, (lang, label2) in enumerate(zip(langs, classes)):
-            cos, l2 = compute_avg_dist(img, lang, label1, label2)
+        for j, (init, label2) in enumerate(zip(inits, classes)):
+            cos, l2 = compute_avg_dist(img, init, label1, label2)
             df_cos[label1][label2] = cos
             df_l2[label1][label2] = l2
 

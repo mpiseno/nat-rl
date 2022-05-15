@@ -18,9 +18,9 @@ from habitat.utils.visualizations.utils import observations_to_image
 from stanford_habitat.utils import make_traj, execute_traj
 from stanford_habitat.measures import * # register
 
-#from nat_rl.models import load_clip_model
+from nat_rl.models import load_clip_model
 from nat_rl.utils.ik import get_ee_waypoints
-#from nat_rl.utils.common import expert_img_sort_fn
+from nat_rl.utils.common import expert_img_sort_fn
 from nat_rl.utils.env_utils import PICK_SINGLE_OBJECT_CONFIG, PICK_FRUIT_CONFIG, SPACIAL_REASONING_CONFIG, insert_test_dataset
 
 '''
@@ -32,7 +32,8 @@ env_configs = {
     'pick_single_object-v0': PICK_SINGLE_OBJECT_CONFIG,
     'pick_fruit': PICK_FRUIT_CONFIG,
     'pick_fruit_test': PICK_FRUIT_CONFIG,
-    'spatial_reasoning': SPACIAL_REASONING_CONFIG
+    'spatial_reasoning': SPACIAL_REASONING_CONFIG,
+    'spatial_reasoning_test': SPACIAL_REASONING_CONFIG
 }
 dataset_files = {
     'pick_fruit': 'data/pick_datasets/pick_fruit/pick_fruit.json copy.gz',
@@ -42,13 +43,13 @@ dataset_files = {
 
 def get_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--env', type=str, default='pick_fruit')
+    parser.add_argument('--env', type=str, required=True)
 
     parser.add_argument('--make_video', action='store_true', default=False)
     parser.add_argument('--make_videos_from_data', action='store_true', default=False)
 
     parser.add_argument('--generate_image_trajs', action='store_true', default=False)
-    parser.add_argument('--generate_clip_embeddings', action='store_true', default=False)
+    parser.add_argument('--generate_clip_img_embeddings', action='store_true', default=False)
     parser.add_argument('--generate_clip_lang_embeddings', action='store_true', default=False)
     parser.add_argument('--pretrained_clip_path', type=str, default=None)
 
@@ -57,7 +58,7 @@ def get_args():
 
 
 def is_pick_and_place_env(env_name):
-    return env_name in ['spatial_reasoning']
+    return env_name in ['spatial_reasoning', 'spatial_reasoning_test']
 
 
 def make_IK_config(config, args):
@@ -197,7 +198,8 @@ def generate_single_trajectory(env, args, ep_iter=-1, expert_traj_dir=None):
         final_obs = sub_traj[-1]
         traj.extend(sub_traj)
         
-        action_traj = np.concatenate((ee_traj, np.expand_dims(grip_traj, axis=1)), axis=1)
+        actions = np.concatenate((ee_traj, np.expand_dims(grip_traj, axis=1)), axis=1)
+        action_traj = np.concatenate((action_traj, actions), axis=0)
 
     # And finally, from the goal location to the EE resting position
     ee_waypoints = get_ee_waypoints(
@@ -260,12 +262,13 @@ def generate_trajectories(args):
         return
 
     # Sometimes due to randomness in the trajectory generation, episodes fail. So just retry them
+    #failed_episode_ids = ['101', '175', '326']
     failed_episodes = [ep for ep in env.episodes if ep.episode_id in failed_episode_ids]
+    env._episode_iterator.episodes = failed_episodes
+    env.episodes = failed_episodes
+    env._current_episode = failed_episodes[0]
     failed_again_episodes = []
     for ep in failed_episodes:
-        env._episode_iterator.episodes = failed_episodes
-        env.episodes = failed_episodes
-        env._current_episode = ep
         success = generate_single_trajectory(env, args, expert_traj_dir=expert_traj_dir)
         if not success:
             failed_again_episodes.append(env.current_episode)
@@ -310,6 +313,7 @@ def generate_clip_embeddings(args, lang=False):
 
     device = "cuda" if torch.cuda.is_available() else "cpu"
     model, preprocess = load_clip_model(keep_original_transforms=False, device=device)
+    print(f'Using CLIP model: {model}\nUsing preprocess: {preprocess}')
 
     print(f'Generating CLIP Image embeddings from: {expert_traj_dir} | using device: {device}')
     for i, episode_dir in enumerate(episode_dirs):
@@ -390,7 +394,7 @@ def main():
         generate_trajectories(args)
     
     # Saves CLIP embeddings of the generated images. Assumes the images are already saved
-    if args.generate_clip_embeddings:
+    if args.generate_clip_img_embeddings:
         generate_clip_embeddings(args)
 
     if args.generate_clip_lang_embeddings:

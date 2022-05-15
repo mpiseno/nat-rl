@@ -14,6 +14,11 @@ from stable_baselines3.common.policies import ActorCriticPolicy
 from nat_rl.utils.preprocessing import maybe_transpose
 
 
+CLIP_ARITHMETIC_TYPE_1 = 'CLIP_ARITHMETIC_INIT_PLUS_LANG'
+CLIP_ARITHMETIC_TYPE_2 = 'CLIP_ARITHMETIC_CUR_PLUS_LANG'
+CLIP_ARITHMETIC_TYPE_3 = 'CLIP_ARITHMETIC_INIT_MINUS_CUR_PLUS_LANG'
+
+
 def load_clip_model(model_name='ViT-B/32', keep_original_transforms=False, device=None):
     model, preprocess = clip.load(model_name, device)
     if not keep_original_transforms:
@@ -237,6 +242,8 @@ class CustomMultiInputActorCriticPolicy(ActorCriticPolicy):
             optimizer_class,
             optimizer_kwargs,
         )
+
+        #self.model, self.preprocess = None
     
     def extract_features(self, obs: th.Tensor) -> th.Tensor:
         assert self.features_extractor is not None, "No features extractor was set"
@@ -273,31 +280,39 @@ class CustomMultiInputActorCriticPolicy(ActorCriticPolicy):
 
     #     return clip_obs
 
-    def preprocess_for_evaluation(self, obs):
+    def normalize_and_transpose(self, obs):
+        obs = obs / 255
+        obs = np.transpose(obs, (2, 0, 1))
+        return obs
+
+    def preprocess_for_evaluation(self, obs, goal_type):
         processed_obs = {}
         for key, val in obs.items():
             assert isinstance(val, np.ndarray)
             if len(val.shape) == 3 and val.shape[-1] == 3:
                 assert val.dtype == np.uint8
-
-                val = val / 255
-                val = np.transpose(val, (2, 0, 1))
+                val = self.normalize_and_transpose(val)
                 val = th.as_tensor(val, dtype=th.float32, device='cuda').unsqueeze(0)
                 processed_obs[key] = val
             else:
                 assert len(val.shape) == 1
+                if goal_type == CLIP_ARITHMETIC_TYPE_1:
+                    val = self.normalize_transpose(obs['robot_third_rgb'])
+                    val = self.preprocess(val)
+                    with th.no_grad():
+                        val = self.model.encode_image(val)
 
                 processed_obs[key] = th.as_tensor(val, dtype=th.float32, device='cuda').unsqueeze(0)
         
         return processed_obs
 
     
-    def predict(self, observation, state=None, epiosde_start=None, deterministic=False, train_mode=None):
+    def predict(self, observation, goal_type, state=None, epiosde_start=None, deterministic=False, train_mode=None):
         assert train_mode is not None, 'train mode set to None'
         self.set_training_mode(False)
 
         #observation = self.get_clip_embedding(observation)
-        observation = self.preprocess_for_evaluation(observation)
+        observation = self.preprocess_for_evaluation(observation, goal_type)
         vectorized_env = None
         # else:
         #     observation, vectorized_env = self.obs_to_tensor(observation)
