@@ -329,16 +329,14 @@ def get_episode_id_to_target_object(dataset_file):
     return ep_id_to_obj
 
 
-def generate_clip_language_embeddings_single_traj(episode_dir, model, device, true_object):
-    def generate_language(obj):
-        noun1 = random.choice(['image', 'picture', 'photo'])
-        verb1 = random.choice(['holding', 'picking up', 'grabbing'])
-        a_vs_an1 = 'A' if noun1 in ['picture', 'photo'] else 'An'
-        a_vs_an2 = 'a' if obj in ['plum', 'banana'] else 'an'
-        utterance = f'{a_vs_an1} {noun1} of a robot {verb1} {a_vs_an2} {obj} above the table.'
-        return utterance
-
-    utterance = generate_language(true_object)
+def generate_clip_language_embeddings_single_traj(
+    episode_dir,
+    model,
+    device,
+    true_object,
+    generate_language_fn
+):
+    utterance = generate_language_fn(true_object)
     token = clip.tokenize([utterance])
     text_embedding = model.encode_text(token).detach().numpy()
 
@@ -346,6 +344,34 @@ def generate_clip_language_embeddings_single_traj(episode_dir, model, device, tr
     np.save(embedding_fname, text_embedding.astype(np.float32))
     with open(os.path.join(episode_dir, 'raw_language.txt'), 'w') as f:
         f.write(utterance)
+
+
+def generate_language_pick_fruit(true_object):
+    obj_to_adjective = {
+        'apple': 'red',
+        'orange': 'orange',
+        'plum': 'purple',
+        'banana': 'yellow'
+    }
+    noun1 = random.choice(['image', 'picture', 'photo'])
+    verb1 = random.choice(['holding', 'picking up'])
+    a_vs_an1 = 'A' if noun1 in ['picture', 'photo'] else 'An'
+    adjective = obj_to_adjective[true_object]
+    a_vs_an2 = 'a' if adjective in ['red', 'purple', 'yellow'] else 'an'
+    utterance = f'{a_vs_an1} {noun1} of a robot {verb1} {a_vs_an2} {adjective} {true_object} above the table.'
+    return utterance
+
+
+def generate_language_spatial_reasoning(true_object):
+    pass
+
+
+generate_language_fns = {
+    'pick_fruit': generate_language_pick_fruit,
+    'pick_fruit_test': generate_language_pick_fruit,
+    'spatial_reasoning': generate_language_spatial_reasoning,
+    'spatial_reasoning_test': generate_language_spatial_reasoning
+}
 
 
 def generate_clip_lang_embeddings(args):
@@ -360,6 +386,7 @@ def generate_clip_lang_embeddings(args):
 
     dataset_file = dataset_files[args.env]
     ep_id_to_obj = get_episode_id_to_target_object(dataset_file)
+    generate_language_fn = generate_language_fns[args.env]
 
     print(f'Generating CLIP Language embeddings from: {expert_traj_dir} | using device: {device}')
     for i, episode_dir in enumerate(episode_dirs):
@@ -369,7 +396,8 @@ def generate_clip_lang_embeddings(args):
             os.path.join(expert_traj_dir, episode_dir),
             model,
             device,
-            ep_id_to_obj[ep_id]
+            ep_id_to_obj[ep_id],
+            generate_language_fn
         )
 
 
