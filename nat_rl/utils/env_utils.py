@@ -18,9 +18,13 @@ from stanford_habitat.datasets.rearrange_datasets import RearrangeDatasetV1
 PICK_SINGLE_OBJECT_CONFIG = "configs/pick_task/pick_single_object.yaml"
 GC_PICK_SINGLE_OBJECT_CONFIG = "configs/pick_task/pick_single_object_GC.yaml"
 PICK_FRUIT_CONFIG = "configs/pick_task/pick_fruit/pick_fruit.yaml"
-SPACIAL_REASONING_CONFIG = "configs/pickplace_tasks/spatial_reasoning/spatial_reasoning.yaml"
+SPATIAL_REASONING_CONFIG = "configs/pickplace_tasks/spatial_reasoning/spatial_reasoning.yaml"
 
-DEFAULT_ENV_OPTIONS = {'test_dataset': False}
+DEFAULT_ENV_OPTIONS = {
+    'test_dataset': False,
+    'goal_type': None,
+    'env_kwargs': {}
+}
 
 
 def insert_test_dataset(config):
@@ -41,66 +45,32 @@ def insert_test_dataset(config):
     return config
 
 
-def make_habitat_pick_single_object_env(env_options=DEFAULT_ENV_OPTIONS):
-    # TODO: replace hard coded env path with something from env_config
-    config_path = os.path.join(os.getcwd(), PICK_SINGLE_OBJECT_CONFIG)
+def make_GC_env(
+    config_path, 
+    test_dataset,
+    goal_type,
+    env_kwargs
+):
     config = habitat.get_config(config_path)
-    if env_options['test_dataset']:
+    if test_dataset == True:
         config = insert_test_dataset(config)
 
-    env = CustomRearrangeRLEnv(config=config)
-    env = HabitatArmActionWrapper(env)
+    if goal_type == 'image':
+        env = ImageGCRLEnv(config=config, **env_kwargs)
+    elif goal_type in ['clip_img', 'clip_lang']:
+        env = CLIPGCRLEnv(config=config, goal_type=goal_type)
+    elif goal_type in ['clip_lang_plus_init', 'clip_lang_plus_init_nn']:
+        env = CLIPSearch_GCRLEnv(config=config, goal_type=goal_type)
 
-    return env
-
-
-def make_habitat_GC_pick_single_object_env():
-    # TODO: replace hard coded env path with something from env_config
-    config_path = os.path.join(os.getcwd(), GC_PICK_SINGLE_OBJECT_CONFIG)
-    config = habitat.get_config(config_path)
-    env = GCRearrangeRLEnv(config=config)
-    env = HabitatArmActionWrapper(env)
-
-    return env
-
-
-def make_pick_fruit_env():
-    config_path = os.path.join(os.getcwd(), PICK_FRUIT_CONFIG)
-    config = habitat.get_config(config_path)
-    env = CustomRearrangeRLEnv(config=config)
     env = HabitatArmActionWrapper(env)
     return env
 
 
 def make_GC_pick_fruit_env(test_dataset=False, goal_type='clip', env_kwargs={}):
     config_path = os.path.join(os.getcwd(), PICK_FRUIT_CONFIG)
-    config = habitat.get_config(config_path)
-    if test_dataset == True:
-        config = insert_test_dataset(config)
-
-    if goal_type == 'image':
-        env = ImageGCRLEnv(config=config, **env_kwargs)
-    elif goal_type in ['clip_img', 'clip_lang']:
-        env = CLIPGCRLEnv(config=config, goal_type=goal_type)
-    elif goal_type in ['clip_lang_plus_init', 'clip_lang_plus_init_nn']:
-        env = CLIPSearch_GCRLEnv(config=config, goal_type=goal_type)
-
-    env = HabitatArmActionWrapper(env)
-    return env
+    return make_GC_env(config_path, test_dataset, goal_type, env_kwargs)
 
 
 def make_GC_spacial_reasoning_env(test_dataset=False, goal_type='image', env_kwargs={}):
-    config_path = os.path.join(os.getcwd(), SPACIAL_REASONING_CONFIG)
-    config = habitat.get_config(config_path)
-    if test_dataset == True:
-        config = insert_test_dataset(config)
-
-    if goal_type == 'image':
-        env = ImageGCRLEnv(config=config, **env_kwargs)
-    elif goal_type in ['clip_img', 'clip_lang']:
-        env = CLIPGCRLEnv(config=config, goal_type=goal_type)
-    elif goal_type in ['clip_lang_plus_init', 'clip_lang_plus_init_nn']:
-        env = CLIPSearch_GCRLEnv(config=config, goal_type=goal_type)
-
-    env = HabitatArmActionWrapper(env)
-    return env
+    config_path = os.path.join(os.getcwd(), SPATIAL_REASONING_CONFIG)
+    return make_GC_env(config_path, test_dataset, goal_type, env_kwargs)
